@@ -1,10 +1,10 @@
 import { Command } from '@commander-js/extra-typings';
 import { runCreate } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
+import { formatMoney, statusIndicator } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
 import { requireText } from '../../lib/prompts';
 import type { Bill } from './utils';
-import { formatCurrency, statusIndicator } from './utils';
 
 export const createBillCmd = new Command('create')
 	.description('Create a new bill')
@@ -60,7 +60,7 @@ export const createBillCmd = new Command('create')
 					console.log(`  ID:         ${bill.id}`);
 					console.log(`  Vendor:     ${bill.vendorName ?? '-'}`);
 					console.log(`  Status:     ${statusIndicator(bill.status)}`);
-					console.log(`  Total:      ${formatCurrency(bill.total, bill.currency)}`);
+					console.log(`  Total:      ${formatMoney(bill.total, bill.currency)}`);
 					console.log(`  Currency:   ${bill.currency ?? '-'}`);
 					console.log(`  Due Date:   ${bill.dueDate ?? '-'}`);
 					console.log();

@@ -66,12 +66,14 @@ export class CyncoClient {
 		this.baseUrl = baseUrl || process.env.CYNCO_API_URL || DEFAULT_BASE_URL;
 	}
 
-	async request<T>(
-		method: string,
-		path: string,
-		body?: Record<string, unknown>,
-		params?: Record<string, string>,
-	): Promise<ApiResult<T>> {
+	private authHeaders(): Record<string, string> {
+		return {
+			Authorization: `Bearer ${this.apiKey}`,
+			'User-Agent': `cynco-cli/${VERSION}`,
+		};
+	}
+
+	private buildUrl(path: string, params?: Record<string, string>): URL {
 		const url = new URL(`/api/v1${path}`, this.baseUrl);
 		if (params) {
 			for (const [key, value] of Object.entries(params)) {
@@ -80,22 +82,10 @@ export class CyncoClient {
 				}
 			}
 		}
+		return url;
+	}
 
-		const headers: Record<string, string> = {
-			Authorization: `Bearer ${this.apiKey}`,
-			'User-Agent': `cynco-cli/${VERSION}`,
-		};
-		if (body) {
-			headers['Content-Type'] = 'application/json';
-		}
-
-		const res = await fetch(url.toString(), {
-			method,
-			headers,
-			body: body ? JSON.stringify(body) : undefined,
-			signal: AbortSignal.timeout(30000),
-		});
-
+	private async parseResponse<T>(res: Response): Promise<ApiResult<T>> {
 		const retryAfter = res.headers.get('retry-after');
 		const responseHeaders: Record<string, string> | null = retryAfter
 			? { 'retry-after': retryAfter }
@@ -107,10 +97,7 @@ export class CyncoClient {
 			const errResponse = json as ApiErrorResponse;
 			return {
 				data: null,
-				error: {
-					message: errResponse.error.message,
-					code: errResponse.error.code,
-				},
+				error: { message: errResponse.error.message, code: errResponse.error.code },
 				headers: responseHeaders,
 			};
 		}
@@ -122,6 +109,28 @@ export class CyncoClient {
 			headers: responseHeaders,
 			pagination: successResponse.pagination ?? null,
 		};
+	}
+
+	async request<T>(
+		method: string,
+		path: string,
+		body?: Record<string, unknown>,
+		params?: Record<string, string>,
+	): Promise<ApiResult<T>> {
+		const url = this.buildUrl(path, params);
+		const headers = this.authHeaders();
+		if (body) {
+			headers['Content-Type'] = 'application/json';
+		}
+
+		const res = await fetch(url.toString(), {
+			method,
+			headers,
+			body: body ? JSON.stringify(body) : undefined,
+			signal: AbortSignal.timeout(30000),
+		});
+
+		return this.parseResponse<T>(res);
 	}
 
 	// Convenience methods
@@ -139,6 +148,19 @@ export class CyncoClient {
 
 	async delete<T>(path: string): Promise<ApiResult<T>> {
 		return this.request<T>('DELETE', path);
+	}
+
+	async upload<T>(path: string, formData: FormData): Promise<ApiResult<T>> {
+		const url = this.buildUrl(path);
+
+		const res = await fetch(url.toString(), {
+			method: 'POST',
+			headers: this.authHeaders(),
+			body: formData,
+			signal: AbortSignal.timeout(120000),
+		});
+
+		return this.parseResponse<T>(res);
 	}
 }
 

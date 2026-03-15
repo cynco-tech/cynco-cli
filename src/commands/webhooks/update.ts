@@ -2,6 +2,7 @@ import { Command } from '@commander-js/extra-typings';
 import { runWrite } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
+import { outputError } from '../../lib/output';
 import type { Webhook } from './utils';
 
 export const updateWebhookCmd = new Command('update')
@@ -27,6 +28,16 @@ export const updateWebhookCmd = new Command('update')
 		if (opts.url) body.url = opts.url;
 		if (opts.events) body.events = opts.events.split(',').map((e: string) => e.trim());
 		if (opts.active) body.active = opts.active === 'true';
+
+		if (Object.keys(body).length === 0) {
+			outputError(
+				{
+					message: 'At least one of --url, --events, or --active must be provided',
+					code: 'missing_fields',
+				},
+				{ json: globalOpts.json },
+			);
+		}
 
 		await runWrite<Webhook>(
 			{

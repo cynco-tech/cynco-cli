@@ -1,11 +1,7 @@
 import pc from 'picocolors';
 import type { GlobalOpts } from './client';
 import { errorMessage, outputError } from './output';
-import { isInteractive, isUnicodeSupported } from './tty';
-
-const TICK = isUnicodeSupported ? String.fromCodePoint(0x2714) : 'v';
-const WARN = isUnicodeSupported ? String.fromCodePoint(0x26a0) : '!';
-const CROSS = isUnicodeSupported ? String.fromCodePoint(0x2717) : 'x';
+import { CROSS, isInteractive, isUnicodeSupported, TICK, WARN } from './tty';
 
 const SPINNER_FRAMES = [
 	'\u2839',

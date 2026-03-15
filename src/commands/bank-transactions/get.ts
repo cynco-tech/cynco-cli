@@ -1,8 +1,9 @@
 import { Command } from '@commander-js/extra-typings';
 import { runGet } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
+import { formatMoney } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
-import { type BankTransaction, formatAmount } from './utils';
+import type { BankTransaction } from './utils';
 
 export const getCmd = new Command('get')
 	.description('Get a single bank transaction by ID')
@@ -28,7 +29,7 @@ export const getCmd = new Command('get')
 					console.log(`\n  Transaction: ${txn.id}`);
 					console.log(`  Date:        ${txn.date ?? '-'}`);
 					console.log(`  Description: ${txn.description ?? '-'}`);
-					console.log(`  Amount:      ${formatAmount(txn.amount, txn.currency)}`);
+					console.log(`  Amount:      ${formatMoney(txn.amount, txn.currency)}`);
 					console.log(`  Type:        ${txn.type ?? '-'}`);
 					console.log(`  Status:      ${txn.status ?? '-'}`);
 					console.log(`  Account:     ${txn.accountName ?? '-'}`);

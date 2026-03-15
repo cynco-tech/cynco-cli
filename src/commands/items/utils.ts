@@ -1,4 +1,4 @@
-import { formatMoney } from '../../lib/format';
+import { formatMoney, formatPercent } from '../../lib/format';
 import { renderTable } from '../../lib/table';
 
 export interface Item {
@@ -10,19 +10,12 @@ export interface Item {
 	createdAt?: string;
 }
 
-export const formatCurrency = formatMoney;
-
-export function formatPercent(rate?: number): string {
-	if (rate == null) return '-';
-	return `${rate}%`;
-}
-
 export function renderItemsTable(items: Item[]): string {
 	const headers = ['Name', 'Description', 'Unit Price', 'Tax Rate', 'ID'];
 	const rows = items.map((item) => [
 		item.name ?? '-',
 		item.description ?? '-',
-		formatCurrency(item.unitPrice),
+		formatMoney(item.unitPrice),
 		formatPercent(item.taxRate),
 		item.id,
 	]);

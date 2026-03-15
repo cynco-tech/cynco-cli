@@ -1,8 +1,9 @@
 import { Command } from '@commander-js/extra-typings';
 import { runGet } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
+import { formatMoney } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
-import { type BankAccount, formatBalance } from './utils';
+import type { BankAccount } from './utils';
 
 function maskAccountNumber(accountNumber: string): string {
 	if (accountNumber.length <= 4) {
@@ -36,7 +37,7 @@ export const getCmd = new Command('get')
 					console.log(`  ID:          ${account.id}`);
 					console.log(`  Type:        ${account.accountType ?? '-'}`);
 					console.log(`  Currency:    ${account.currency ?? '-'}`);
-					console.log(`  Balance:     ${formatBalance(account.balance, account.currency)}`);
+					console.log(`  Balance:     ${formatMoney(account.balance, account.currency)}`);
 					console.log(`  Institution: ${account.institutionName ?? '-'}`);
 					if (account.accountNumber) {
 						console.log(`  Account #:   ${maskAccountNumber(account.accountNumber)}`);

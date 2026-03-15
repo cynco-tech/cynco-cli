@@ -4,13 +4,9 @@ import { CyncoClient, type GlobalOpts } from '../lib/client';
 import { resolveApiKey, resolveProfileName } from '../lib/config';
 import { buildHelpText } from '../lib/help-text';
 import { outputResult } from '../lib/output';
-import { isInteractive, isUnicodeSupported } from '../lib/tty';
+import { CROSS, isInteractive, TICK, WARN } from '../lib/tty';
 import { fetchLatestVersion, isNewer } from '../lib/update-check';
 import { VERSION } from '../lib/version';
-
-const TICK = isUnicodeSupported ? String.fromCodePoint(0x2714) : 'v';
-const CROSS = isUnicodeSupported ? String.fromCodePoint(0x2717) : 'x';
-const WARN = isUnicodeSupported ? String.fromCodePoint(0x26a0) : '!';
 
 type CheckStatus = 'pass' | 'warn' | 'fail';
 

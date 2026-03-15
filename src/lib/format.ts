@@ -37,3 +37,13 @@ export function colorizeStatus(status: string, extraColors?: Record<string, Colo
 	const colorFn = colors[status];
 	return colorFn ? colorFn(status) : pc.yellow(status);
 }
+
+export function statusIndicator(status?: string, extraColors?: Record<string, ColorFn>): string {
+	if (!status) return '-';
+	return colorizeStatus(status.toLowerCase(), extraColors);
+}
+
+export function formatPercent(rate?: number): string {
+	if (rate == null) return '-';
+	return `${rate}%`;
+}

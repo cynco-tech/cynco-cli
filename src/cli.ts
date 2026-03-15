@@ -9,12 +9,16 @@ import { logout } from './commands/auth/logout';
 import { bankAccountsCmd } from './commands/bank-accounts/index';
 import { bankTransactionsCmd } from './commands/bank-transactions/index';
 import { billsCmd } from './commands/bills/index';
+import { cashCmd } from './commands/cash';
 import { customersCmd } from './commands/customers/index';
 import { doctor } from './commands/doctor';
+import { extractCmd } from './commands/extract';
 import { invoicesCmd } from './commands/invoices/index';
 import { itemsCmd } from './commands/items/index';
 import { journalEntriesCmd } from './commands/journal-entries/index';
 import { open } from './commands/open';
+import { reconcileCmd } from './commands/reconcile';
+import { apCmd, arCmd, bsCmd, plCmd, tbCmd } from './commands/report-shortcuts';
 import { reportsCmd } from './commands/reports/index';
 import { update } from './commands/update';
 import { vendorsCmd } from './commands/vendors/index';
@@ -63,21 +67,23 @@ ${pc.gray('Output:')}
 
 ${pc.gray('Examples:')}
 
-- Login to Cynco
+- Extract data from a document
+  ${pc.blue('$ cynco extract ./invoice.pdf')}
 
-  ${pc.blue('$ cynco login')}
+- Show cash position
+  ${pc.blue('$ cynco cash')}
 
-- List invoices
+- List overdue invoices
+  ${pc.blue('$ cynco invoices overdue')}
 
-  ${pc.blue('$ cynco invoices list')}
+- Generate a Trial Balance
+  ${pc.blue('$ cynco tb --period 2026-03')}
 
 - Create a customer
-
   ${pc.blue('$ cynco customers create --name "Acme Corp" --email acme@example.com')}
 
-- Generate a report
-
-  ${pc.blue('$ cynco reports generate --type trial_balance --period 2026-03')}
+- Record a payment
+  ${pc.blue('$ cynco invoices record-payment inv_abc123 --amount 1500')}
 `,
 	)
 	// Top-level shortcuts
@@ -85,6 +91,17 @@ ${pc.gray('Examples:')}
 	.addCommand(logout)
 	// Auth management
 	.addCommand(auth)
+	// AI & extraction
+	.addCommand(extractCmd)
+	// Quick views
+	.addCommand(cashCmd)
+	.addCommand(reconcileCmd)
+	// Report shortcuts
+	.addCommand(tbCmd)
+	.addCommand(bsCmd)
+	.addCommand(plCmd)
+	.addCommand(arCmd)
+	.addCommand(apCmd)
 	// Core resources
 	.addCommand(invoicesCmd)
 	.addCommand(customersCmd)

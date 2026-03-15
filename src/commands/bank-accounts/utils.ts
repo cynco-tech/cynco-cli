@@ -12,15 +12,13 @@ export interface BankAccount {
 	createdAt?: string;
 }
 
-export const formatBalance = formatMoney;
-
 export function renderBankAccountsTable(accounts: BankAccount[]): string {
 	const headers = ['Name', 'Type', 'Currency', 'Balance', 'Institution', 'ID'];
 	const rows = accounts.map((a) => [
 		a.name ?? '-',
 		a.accountType ?? '-',
 		a.currency ?? '-',
-		formatBalance(a.balance, a.currency),
+		formatMoney(a.balance, a.currency),
 		a.institutionName ?? '-',
 		a.id,
 	]);

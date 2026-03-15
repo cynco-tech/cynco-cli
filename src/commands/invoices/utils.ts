@@ -1,4 +1,4 @@
-import { colorizeStatus, formatMoney } from '../../lib/format';
+import { formatMoney, statusIndicator } from '../../lib/format';
 import { renderTable } from '../../lib/table';
 
 export interface Invoice {
@@ -12,20 +12,13 @@ export interface Invoice {
 	createdAt?: string;
 }
 
-export function statusIndicator(status?: string): string {
-	if (!status) return '-';
-	return colorizeStatus(status.toLowerCase());
-}
-
-export const formatCurrency = formatMoney;
-
 export function renderInvoicesTable(invoices: Invoice[]): string {
 	const headers = ['Number', 'Customer', 'Status', 'Total', 'Currency', 'Due Date', 'ID'];
 	const rows = invoices.map((inv) => [
 		inv.invoiceNumber ?? '-',
 		inv.customerName ?? '-',
 		statusIndicator(inv.status),
-		formatCurrency(inv.total, inv.currency),
+		formatMoney(inv.total, inv.currency),
 		inv.currency ?? '-',
 		inv.dueDate ?? '-',
 		inv.id,

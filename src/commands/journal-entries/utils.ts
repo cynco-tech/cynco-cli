@@ -1,5 +1,5 @@
 import pc from 'picocolors';
-import { colorizeStatus, formatMoney } from '../../lib/format';
+import { statusIndicator as baseStatusIndicator, formatMoney } from '../../lib/format';
 import { renderTable } from '../../lib/table';
 
 export interface JournalEntry {
@@ -24,11 +24,8 @@ export interface JournalEntryLine {
 }
 
 export function statusIndicator(status?: string): string {
-	if (!status) return '-';
-	return colorizeStatus(status.toLowerCase(), { reversed: pc.magenta });
+	return baseStatusIndicator(status, { reversed: pc.magenta });
 }
-
-export const formatAmount = formatMoney;
 
 export function renderJournalEntriesTable(entries: JournalEntry[]): string {
 	const headers = ['Entry#', 'Date', 'Status', 'Description', 'Debit', 'Credit', 'ID'];
@@ -37,8 +34,8 @@ export function renderJournalEntriesTable(entries: JournalEntry[]): string {
 		e.date ?? '-',
 		statusIndicator(e.status),
 		e.description ?? '-',
-		formatAmount(e.totalDebit),
-		formatAmount(e.totalCredit),
+		formatMoney(e.totalDebit),
+		formatMoney(e.totalCredit),
 		e.id,
 	]);
 	return renderTable(headers, rows, 'No journal entries found.');

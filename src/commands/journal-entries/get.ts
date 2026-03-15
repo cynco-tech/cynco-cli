@@ -1,8 +1,9 @@
 import { Command } from '@commander-js/extra-typings';
 import { runGet } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
+import { formatMoney } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
-import { formatAmount, type JournalEntry, statusIndicator } from './utils';
+import { type JournalEntry, statusIndicator } from './utils';
 
 export const getCmd = new Command('get')
 	.description('Get a single journal entry by ID')
@@ -31,14 +32,14 @@ export const getCmd = new Command('get')
 					console.log(`  Status:      ${statusIndicator(entry.status)}`);
 					console.log(`  Description: ${entry.description ?? '-'}`);
 					console.log(`  Memo:        ${entry.memo ?? '-'}`);
-					console.log(`  Total Debit: ${formatAmount(entry.totalDebit)}`);
-					console.log(`  Total Credit:${formatAmount(entry.totalCredit)}`);
+					console.log(`  Total Debit: ${formatMoney(entry.totalDebit)}`);
+					console.log(`  Total Credit:${formatMoney(entry.totalCredit)}`);
 
 					if (entry.lines && entry.lines.length > 0) {
 						console.log('\n  Lines:');
 						for (const line of entry.lines) {
-							const debit = line.debit ? `DR ${formatAmount(line.debit)}` : '';
-							const credit = line.credit ? `CR ${formatAmount(line.credit)}` : '';
+							const debit = line.debit != null ? `DR ${formatMoney(line.debit)}` : '';
+							const credit = line.credit != null ? `CR ${formatMoney(line.credit)}` : '';
 							console.log(
 								`    ${line.accountName ?? line.accountId}  ${debit}${credit}  ${line.description ?? ''}`,
 							);

@@ -1,9 +1,9 @@
 import { Command } from '@commander-js/extra-typings';
 import { runGet } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
+import { formatMoney, statusIndicator } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
 import type { Invoice } from './utils';
-import { formatCurrency, statusIndicator } from './utils';
 
 export const getInvoiceCmd = new Command('get')
 	.description('Get an invoice by ID')
@@ -31,7 +31,7 @@ export const getInvoiceCmd = new Command('get')
 					console.log(`  ID:         ${invoice.id}`);
 					console.log(`  Customer:   ${invoice.customerName ?? '-'}`);
 					console.log(`  Status:     ${statusIndicator(invoice.status)}`);
-					console.log(`  Total:      ${formatCurrency(invoice.total, invoice.currency)}`);
+					console.log(`  Total:      ${formatMoney(invoice.total, invoice.currency)}`);
 					console.log(`  Currency:   ${invoice.currency ?? '-'}`);
 					console.log(`  Due Date:   ${invoice.dueDate ?? '-'}`);
 					console.log(`  Created:    ${invoice.createdAt ?? '-'}`);

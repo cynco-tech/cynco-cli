@@ -1,8 +1,13 @@
 import { Command } from '@commander-js/extra-typings';
 import { buildHelpText } from '../../lib/help-text';
 import { createInvoiceCmd } from './create';
+import { finalizeCmd } from './finalize';
 import { getInvoiceCmd } from './get';
 import { listInvoicesCmd } from './list';
+import { overdueCmd } from './overdue';
+import { recordPaymentCmd } from './record-payment';
+import { sendInvoiceCmd } from './send-invoice';
+import { voidCmd } from './void';
 
 export const invoicesCmd = new Command('invoices')
 	.description('Manage invoices')
@@ -13,9 +18,18 @@ export const invoicesCmd = new Command('invoices')
 				'cynco invoices list',
 				'cynco invoices get inv_abc123',
 				'cynco invoices create --customer-id cust_abc123',
+				'cynco invoices overdue',
+				'cynco invoices finalize inv_abc123',
+				'cynco invoices send inv_abc123',
+				'cynco invoices record-payment inv_abc123 --amount 1500',
 			],
 		}),
 	)
 	.addCommand(listInvoicesCmd, { isDefault: true })
 	.addCommand(getInvoiceCmd)
-	.addCommand(createInvoiceCmd);
+	.addCommand(createInvoiceCmd)
+	.addCommand(overdueCmd)
+	.addCommand(finalizeCmd)
+	.addCommand(sendInvoiceCmd)
+	.addCommand(voidCmd)
+	.addCommand(recordPaymentCmd);

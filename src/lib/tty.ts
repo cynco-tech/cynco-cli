@@ -18,3 +18,7 @@ export const isUnicodeSupported: boolean =
 	process.platform !== 'win32' ||
 	Boolean(process.env.WT_SESSION) ||
 	process.env.TERM_PROGRAM === 'vscode';
+
+export const TICK = isUnicodeSupported ? String.fromCodePoint(0x2714) : 'v';
+export const CROSS = isUnicodeSupported ? String.fromCodePoint(0x2717) : 'x';
+export const WARN = isUnicodeSupported ? String.fromCodePoint(0x26a0) : '!';

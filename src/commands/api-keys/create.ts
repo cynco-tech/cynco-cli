@@ -5,7 +5,7 @@ import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
 import { outputError } from '../../lib/output';
 import { requireText } from '../../lib/prompts';
-import { type Scope, VALID_SCOPES } from './utils';
+import { validateScopes } from './utils';
 
 interface CreateApiKeyResponse {
 	id: string;
@@ -52,18 +52,12 @@ export const createApiKeyCmd = new Command('create')
 			globalOpts,
 		);
 
-		const scopes = scopesRaw.split(',').map((s) => s.trim());
-		if (scopes.length === 0 || scopes.some((s) => s === '')) {
+		let scopes: string[];
+		try {
+			scopes = validateScopes(scopesRaw);
+		} catch (err) {
 			outputError(
-				{ message: 'At least one scope is required', code: 'invalid_scopes' },
-				{ json: globalOpts.json },
-			);
-		}
-
-		const invalidScopes = scopes.filter((s) => !VALID_SCOPES.includes(s as Scope));
-		if (invalidScopes.length > 0) {
-			outputError(
-				{ message: `Invalid scopes: ${invalidScopes.join(', ')}`, code: 'invalid_scopes' },
+				{ message: err instanceof Error ? err.message : 'Invalid scopes', code: 'invalid_scopes' },
 				{ json: globalOpts.json },
 			);
 		}

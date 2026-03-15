@@ -1,11 +1,11 @@
 import { Command } from '@commander-js/extra-typings';
 import { runCreate } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
+import { formatMoney, statusIndicator } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
 import { outputError } from '../../lib/output';
 import { requireText } from '../../lib/prompts';
 import type { Invoice } from './utils';
-import { formatCurrency, statusIndicator } from './utils';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -78,7 +78,7 @@ export const createInvoiceCmd = new Command('create')
 					console.log(`  ID:         ${invoice.id}`);
 					console.log(`  Customer:   ${invoice.customerName ?? '-'}`);
 					console.log(`  Status:     ${statusIndicator(invoice.status)}`);
-					console.log(`  Total:      ${formatCurrency(invoice.total, invoice.currency)}`);
+					console.log(`  Total:      ${formatMoney(invoice.total, invoice.currency)}`);
 					console.log(`  Currency:   ${invoice.currency ?? '-'}`);
 					console.log(`  Due Date:   ${invoice.dueDate ?? '-'}`);
 					console.log();

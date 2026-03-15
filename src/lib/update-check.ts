@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import pc from 'picocolors';
 import { getConfigDir } from './config';
 import { VERSION } from './version';
 
@@ -118,20 +119,19 @@ function formatNotice(latestVersion: string): string {
 	const upgrade = detectInstallMethod();
 	const isUrl = upgrade.startsWith('http');
 
-	const dim = '\x1B[2m';
-	const yellow = '\x1B[33m';
-	const cyan = '\x1B[36m';
-	const reset = '\x1B[0m';
-
 	const lines = [
 		'',
-		`${dim}Update available: ${yellow}v${VERSION}${reset}${dim} → ${cyan}v${latestVersion}${reset}`,
-		`${dim}${isUrl ? 'Visit' : 'Run'}: ${cyan}${upgrade}${reset}`,
+		pc.dim(
+			`Update available: ${pc.yellow(`v${VERSION}`)}${pc.dim(' → ')}${pc.cyan(`v${latestVersion}`)}`,
+		),
+		pc.dim(`${isUrl ? 'Visit' : 'Run'}: ${pc.cyan(upgrade)}`),
 	];
 
 	if (process.platform === 'win32') {
 		lines.push(
-			`${dim}Or download from: ${cyan}https://github.com/cynco-tech/cynco-cli/releases/latest${reset}`,
+			pc.dim(
+				`Or download from: ${pc.cyan('https://github.com/cynco-tech/cynco-cli/releases/latest')}`,
+			),
 		);
 	}
 
