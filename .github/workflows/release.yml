@@ -1,0 +1,289 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  test-binary:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: node24-macos-arm64
+            binary: dist/cynco
+          - os: ubuntu-latest
+            target: node24-linux-x64
+            binary: dist/cynco
+          - os: windows-latest
+            target: node24-win-x64
+            binary: dist/cynco.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Node bundle
+        run: pnpm build
+
+      - name: Build binary
+        run: pnpm exec pkg dist/cli.cjs --compress Brotli --target ${{ matrix.target }} --output ${{ matrix.binary }}
+
+      - name: Verify binary runs
+        run: |
+          ${{ matrix.binary }} --version
+          ${{ matrix.binary }} --help
+
+  test-binary-linux-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Node bundle
+        run: pnpm build
+
+      - name: Build binary (no-bytecode workaround)
+        run: pnpm exec pkg dist/cli.cjs --compress Brotli --target node24-linux-arm64 --output dist/cynco --no-bytecode --public-packages "*" --public
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Verify binary runs under arm64 emulation
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v "$PWD/dist/cynco:/usr/local/bin/cynco" \
+            debian:bookworm-slim \
+            sh -c "cynco --version && cynco --help"
+
+  build-macos:
+    needs: [test-binary, test-binary-linux-arm64]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Node bundle
+        run: pnpm build
+
+      - name: Build macOS binaries
+        run: |
+          pnpm exec pkg dist/cli.cjs --compress Brotli --target node24-macos-arm64 --output dist/cynco-darwin-arm64
+          pnpm exec pkg dist/cli.cjs --compress Brotli --target node24-macos-x64   --output dist/cynco-darwin-x64
+
+      - name: Verify signatures
+        run: |
+          codesign -v dist/cynco-darwin-arm64
+          codesign -v dist/cynco-darwin-x64
+
+      - name: Package archives
+        run: |
+          cd dist
+          for bin in cynco-darwin-arm64 cynco-darwin-x64; do
+            cp "$bin" cynco
+            chmod +x cynco
+            tar -czf "${bin}.tar.gz" cynco
+            rm cynco
+          done
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          shasum -a 256 cynco-darwin-arm64.tar.gz cynco-darwin-x64.tar.gz > checksums-macos.txt
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-archives
+          path: |
+            dist/cynco-darwin-arm64.tar.gz
+            dist/cynco-darwin-x64.tar.gz
+            dist/checksums-macos.txt
+
+  build-linux-windows:
+    needs: [test-binary, test-binary-linux-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Node bundle
+        run: pnpm build
+
+      - name: Build binaries
+        run: |
+          pnpm exec pkg dist/cli.cjs --compress Brotli --target node24-linux-x64   --output dist/cynco-linux-x64
+          pnpm exec pkg dist/cli.cjs --compress Brotli --target node24-linux-arm64 --output dist/cynco-linux-arm64 --no-bytecode --public-packages "*" --public
+          pnpm exec pkg dist/cli.cjs --compress Brotli --target node24-win-x64     --output dist/cynco-windows-x64.exe
+
+      - name: Verify binaries
+        run: |
+          for f in dist/cynco-linux-x64 dist/cynco-linux-arm64 dist/cynco-windows-x64.exe; do
+            [ -s "$f" ] || { echo "Missing or empty: $f"; exit 1; }
+          done
+
+      - name: Package archives
+        run: |
+          cd dist
+          for bin in cynco-linux-x64 cynco-linux-arm64; do
+            cp "$bin" cynco
+            chmod +x cynco
+            tar -czf "${bin}.tar.gz" cynco
+            rm cynco
+          done
+          cp cynco-windows-x64.exe cynco.exe
+          zip cynco-windows-x64.zip cynco.exe
+          rm cynco.exe
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum cynco-linux-x64.tar.gz cynco-linux-arm64.tar.gz cynco-windows-x64.zip > checksums-linux-windows.txt
+
+      - name: Upload Linux/Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-windows-archives
+          path: |
+            dist/cynco-linux-x64.tar.gz
+            dist/cynco-linux-arm64.tar.gz
+            dist/cynco-windows-x64.zip
+            dist/checksums-linux-windows.txt
+
+  release:
+    if: github.event_name != 'workflow_dispatch'
+    needs: [build-macos, build-linux-windows]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Verify all archives exist
+        run: |
+          for f in dist/cynco-darwin-arm64.tar.gz dist/cynco-darwin-x64.tar.gz \
+                    dist/cynco-linux-x64.tar.gz dist/cynco-linux-arm64.tar.gz \
+                    dist/cynco-windows-x64.zip; do
+            [ -s "$f" ] || { echo "Missing or empty: $f"; exit 1; }
+          done
+
+      - name: Merge checksums
+        run: |
+          cat dist/checksums-macos.txt dist/checksums-linux-windows.txt > dist/checksums.txt
+          rm dist/checksums-macos.txt dist/checksums-linux-windows.txt
+
+      - name: Detect pre-release
+        id: meta
+        run: |
+          if [[ "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "make_latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          make_latest: ${{ steps.meta.outputs.make_latest }}
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            **cURL**
+            ```sh
+            curl -fsSL https://cynco.io/install.sh | bash
+            ```
+
+            **Node.js**
+            ```sh
+            npm install -g cynco-cli
+            ```
+
+            **PowerShell (Windows)**
+            ```sh
+            irm https://cynco.io/install.ps1 | iex
+            ```
+          files: |
+            dist/cynco-darwin-arm64.tar.gz
+            dist/cynco-darwin-x64.tar.gz
+            dist/cynco-linux-x64.tar.gz
+            dist/cynco-linux-arm64.tar.gz
+            dist/cynco-windows-x64.zip
+            dist/checksums.txt
+
+  publish-npm:
+    if: github.event_name != 'workflow_dispatch'
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish to npm
+        run: pnpm publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

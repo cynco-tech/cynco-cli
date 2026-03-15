@@ -1,0 +1,62 @@
+{
+  "name": "cynco-cli",
+  "version": "0.1.0",
+  "description": "The official CLI for Cynco — AI Native Accounting",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cynco-tech/cynco-cli"
+  },
+  "homepage": "https://github.com/cynco-tech/cynco-cli#readme",
+  "keywords": [
+    "cli",
+    "cynco",
+    "accounting",
+    "api",
+    "invoicing"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "files": [
+    "dist/cli.cjs"
+  ],
+  "type": "module",
+  "bin": {
+    "cynco": "./dist/cli.cjs"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "dev:watch": "tsx --watch src/cli.ts",
+    "build": "esbuild src/cli.ts --bundle --platform=node --format=cjs --minify --outfile=dist/cli.cjs",
+    "build:bin": "pnpm build && pkg dist/cli.cjs --compress Brotli --target node24 --output dist/cynco",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.1.0",
+    "@commander-js/extra-typings": "14.0.0",
+    "commander": "14.0.3",
+    "picocolors": "^1.1.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@biomejs/biome"
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.6",
+    "@types/node": "24.12.0",
+    "esbuild": "0.27.4",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4",
+    "@yao-pkg/pkg": "6.14.1"
+  }
+}
