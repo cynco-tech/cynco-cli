@@ -2,25 +2,9 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import {
-	buildPaginationParams,
-	parseLimitOpt,
-	parsePageOpt,
-	printPaginationHint,
-} from '../../lib/pagination';
+import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
 import type { BankAccount } from './utils';
 import { renderBankAccountsTable } from './utils';
-
-interface BankAccountListResponse {
-	bankAccounts: BankAccount[];
-	pagination?: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasMore: boolean;
-	};
-}
 
 export const listCmd = new Command('list')
 	.alias('ls')
@@ -46,7 +30,7 @@ export const listCmd = new Command('list')
 
 		const params = buildPaginationParams(page, limit);
 
-		await runList<BankAccountListResponse>(
+		await runList<BankAccount[]>(
 			{
 				spinner: {
 					loading: 'Fetching bank accounts...',
@@ -55,10 +39,7 @@ export const listCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/bank-accounts', params),
 				onInteractive: (result) => {
-					console.log(renderBankAccountsTable(result.bankAccounts));
-					if (result.pagination) {
-						printPaginationHint(result.pagination);
-					}
+					console.log(renderBankAccountsTable(result ?? []));
 				},
 			},
 			globalOpts,

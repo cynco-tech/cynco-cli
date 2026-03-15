@@ -2,25 +2,9 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import {
-	buildPaginationParams,
-	parseLimitOpt,
-	parsePageOpt,
-	printPaginationHint,
-} from '../../lib/pagination';
+import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
 import type { JournalEntry } from './utils';
 import { renderJournalEntriesTable } from './utils';
-
-interface JournalEntryListResponse {
-	journalEntries: JournalEntry[];
-	pagination?: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasMore: boolean;
-	};
-}
 
 export const listCmd = new Command('list')
 	.alias('ls')
@@ -61,7 +45,7 @@ export const listCmd = new Command('list')
 			params.period = opts.period;
 		}
 
-		await runList<JournalEntryListResponse>(
+		await runList<JournalEntry[]>(
 			{
 				spinner: {
 					loading: 'Fetching journal entries...',
@@ -70,10 +54,7 @@ export const listCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/journal-entries', params),
 				onInteractive: (result) => {
-					console.log(renderJournalEntriesTable(result.journalEntries));
-					if (result.pagination) {
-						printPaginationHint(result.pagination);
-					}
+					console.log(renderJournalEntriesTable(result ?? []));
 				},
 			},
 			globalOpts,

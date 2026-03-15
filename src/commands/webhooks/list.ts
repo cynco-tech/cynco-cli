@@ -2,25 +2,9 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import {
-	buildPaginationParams,
-	parseLimitOpt,
-	parsePageOpt,
-	printPaginationHint,
-} from '../../lib/pagination';
+import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
 import type { Webhook } from './utils';
 import { renderWebhooksTable } from './utils';
-
-type ListResponse = {
-	webhooks: Webhook[];
-	pagination?: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasMore: boolean;
-	};
-};
 
 export const listWebhooksCmd = new Command('list')
 	.alias('ls')
@@ -39,7 +23,7 @@ export const listWebhooksCmd = new Command('list')
 		const page = parsePageOpt(opts.page, globalOpts);
 		const params = buildPaginationParams(page, limit);
 
-		await runList<ListResponse>(
+		await runList<Webhook[]>(
 			{
 				spinner: {
 					loading: 'Fetching webhooks...',
@@ -48,10 +32,7 @@ export const listWebhooksCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/webhooks', params),
 				onInteractive: (result) => {
-					console.log(renderWebhooksTable(result.webhooks ?? []));
-					if (result.pagination) {
-						printPaginationHint(result.pagination);
-					}
+					console.log(renderWebhooksTable(result ?? []));
 				},
 			},
 			globalOpts,

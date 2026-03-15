@@ -2,25 +2,9 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import {
-	buildPaginationParams,
-	parseLimitOpt,
-	parsePageOpt,
-	printPaginationHint,
-} from '../../lib/pagination';
+import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
 import type { Invoice } from './utils';
 import { renderInvoicesTable } from './utils';
-
-type ListResponse = {
-	invoices: Invoice[];
-	pagination?: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasMore: boolean;
-	};
-};
 
 export const listInvoicesCmd = new Command('list')
 	.alias('ls')
@@ -51,7 +35,7 @@ export const listInvoicesCmd = new Command('list')
 			params.status = opts.status;
 		}
 
-		await runList<ListResponse>(
+		await runList<Invoice[]>(
 			{
 				spinner: {
 					loading: 'Fetching invoices...',
@@ -60,10 +44,7 @@ export const listInvoicesCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/invoices', params),
 				onInteractive: (result) => {
-					console.log(renderInvoicesTable(result.invoices ?? []));
-					if (result.pagination) {
-						printPaginationHint(result.pagination);
-					}
+					console.log(renderInvoicesTable(result ?? []));
 				},
 			},
 			globalOpts,

@@ -2,25 +2,9 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import {
-	buildPaginationParams,
-	parseLimitOpt,
-	parsePageOpt,
-	printPaginationHint,
-} from '../../lib/pagination';
+import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
 import type { Vendor } from './utils';
 import { renderVendorsTable } from './utils';
-
-type ListResponse = {
-	vendors: Vendor[];
-	pagination?: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasMore: boolean;
-	};
-};
 
 export const listVendorsCmd = new Command('list')
 	.alias('ls')
@@ -46,7 +30,7 @@ export const listVendorsCmd = new Command('list')
 		const page = parsePageOpt(opts.page, globalOpts);
 		const params = buildPaginationParams(page, limit, opts.sort, opts.order);
 
-		await runList<ListResponse>(
+		await runList<Vendor[]>(
 			{
 				spinner: {
 					loading: 'Fetching vendors...',
@@ -55,10 +39,7 @@ export const listVendorsCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/vendors', params),
 				onInteractive: (result) => {
-					console.log(renderVendorsTable(result.vendors ?? []));
-					if (result.pagination) {
-						printPaginationHint(result.pagination);
-					}
+					console.log(renderVendorsTable(result ?? []));
 				},
 			},
 			globalOpts,

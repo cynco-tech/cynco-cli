@@ -2,25 +2,9 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import {
-	buildPaginationParams,
-	parseLimitOpt,
-	parsePageOpt,
-	printPaginationHint,
-} from '../../lib/pagination';
+import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
 import type { Item } from './utils';
 import { renderItemsTable } from './utils';
-
-type ListResponse = {
-	items: Item[];
-	pagination?: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasMore: boolean;
-	};
-};
 
 export const listItemsCmd = new Command('list')
 	.alias('ls')
@@ -39,7 +23,7 @@ export const listItemsCmd = new Command('list')
 		const page = parsePageOpt(opts.page, globalOpts);
 		const params = buildPaginationParams(page, limit);
 
-		await runList<ListResponse>(
+		await runList<Item[]>(
 			{
 				spinner: {
 					loading: 'Fetching items...',
@@ -48,10 +32,7 @@ export const listItemsCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/items', params),
 				onInteractive: (result) => {
-					console.log(renderItemsTable(result.items ?? []));
-					if (result.pagination) {
-						printPaginationHint(result.pagination);
-					}
+					console.log(renderItemsTable(result ?? []));
 				},
 			},
 			globalOpts,

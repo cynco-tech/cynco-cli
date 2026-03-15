@@ -2,25 +2,9 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import {
-	buildPaginationParams,
-	parseLimitOpt,
-	parsePageOpt,
-	printPaginationHint,
-} from '../../lib/pagination';
+import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
 import type { BankTransaction } from './utils';
 import { renderTransactionsTable } from './utils';
-
-interface TransactionListResponse {
-	transactions: BankTransaction[];
-	pagination?: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasMore: boolean;
-	};
-}
 
 export const listCmd = new Command('list')
 	.alias('ls')
@@ -61,7 +45,7 @@ export const listCmd = new Command('list')
 			params.status = opts.status;
 		}
 
-		await runList<TransactionListResponse>(
+		await runList<BankTransaction[]>(
 			{
 				spinner: {
 					loading: 'Fetching transactions...',
@@ -70,10 +54,7 @@ export const listCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/bank-transactions', params),
 				onInteractive: (result) => {
-					console.log(renderTransactionsTable(result.transactions));
-					if (result.pagination) {
-						printPaginationHint(result.pagination);
-					}
+					console.log(renderTransactionsTable(result ?? []));
 				},
 			},
 			globalOpts,

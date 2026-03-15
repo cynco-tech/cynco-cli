@@ -2,25 +2,9 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import {
-	buildPaginationParams,
-	parseLimitOpt,
-	parsePageOpt,
-	printPaginationHint,
-} from '../../lib/pagination';
+import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
 import type { Account } from './utils';
 import { renderAccountsTable } from './utils';
-
-interface AccountListResponse {
-	accounts: Account[];
-	pagination?: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasMore: boolean;
-	};
-}
 
 export const listCmd = new Command('list')
 	.alias('ls')
@@ -56,7 +40,7 @@ export const listCmd = new Command('list')
 			params.activeOnly = 'true';
 		}
 
-		await runList<AccountListResponse>(
+		await runList<Account[]>(
 			{
 				spinner: {
 					loading: 'Fetching accounts...',
@@ -65,10 +49,7 @@ export const listCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/accounts', params),
 				onInteractive: (result) => {
-					console.log(renderAccountsTable(result.accounts));
-					if (result.pagination) {
-						printPaginationHint(result.pagination);
-					}
+					console.log(renderAccountsTable(result ?? []));
 				},
 			},
 			globalOpts,

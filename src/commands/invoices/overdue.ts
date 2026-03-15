@@ -16,11 +16,6 @@ interface OverdueInvoice {
 	status?: string;
 }
 
-interface OverdueResponse {
-	invoices: OverdueInvoice[];
-	pagination?: { total: number; hasMore: boolean; page: number; totalPages: number };
-}
-
 const MS_PER_DAY = 86_400_000;
 
 function daysOverdue(dueDate?: string): number {
@@ -54,7 +49,7 @@ export const overdueCmd = new Command('overdue')
 	.action(async (opts, cmd) => {
 		const globalOpts = cmd.optsWithGlobals() as GlobalOpts;
 
-		await runList<OverdueResponse>(
+		await runList<OverdueInvoice[]>(
 			{
 				spinner: {
 					loading: 'Fetching overdue invoices...',
@@ -68,7 +63,7 @@ export const overdueCmd = new Command('overdue')
 						page: opts.page,
 					}),
 				onInteractive: (result) => {
-					const invoices = result.invoices ?? [];
+					const invoices = result ?? [];
 					if (invoices.length === 0) {
 						console.log(`\n  ${pc.green('No overdue invoices.')} \n`);
 						return;

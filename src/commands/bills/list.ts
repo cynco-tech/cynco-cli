@@ -2,25 +2,9 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import {
-	buildPaginationParams,
-	parseLimitOpt,
-	parsePageOpt,
-	printPaginationHint,
-} from '../../lib/pagination';
+import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
 import type { Bill } from './utils';
 import { renderBillsTable } from './utils';
-
-type ListResponse = {
-	bills: Bill[];
-	pagination?: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasMore: boolean;
-	};
-};
 
 export const listBillsCmd = new Command('list')
 	.alias('ls')
@@ -51,7 +35,7 @@ export const listBillsCmd = new Command('list')
 			params.status = opts.status;
 		}
 
-		await runList<ListResponse>(
+		await runList<Bill[]>(
 			{
 				spinner: {
 					loading: 'Fetching bills...',
@@ -60,10 +44,7 @@ export const listBillsCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/bills', params),
 				onInteractive: (result) => {
-					console.log(renderBillsTable(result.bills ?? []));
-					if (result.pagination) {
-						printPaginationHint(result.pagination);
-					}
+					console.log(renderBillsTable(result ?? []));
 				},
 			},
 			globalOpts,

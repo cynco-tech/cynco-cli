@@ -14,11 +14,6 @@ interface BankAccount {
 	accountType?: string;
 }
 
-interface CashResponse {
-	bankAccounts: BankAccount[];
-	pagination?: unknown;
-}
-
 export const cashCmd = new Command('cash')
 	.description('Show cash position — all bank account balances')
 	.option('--currency <code>', 'Filter by currency (e.g. MYR, USD)')
@@ -31,7 +26,7 @@ export const cashCmd = new Command('cash')
 	.action(async (opts, cmd) => {
 		const globalOpts = cmd.optsWithGlobals() as GlobalOpts;
 
-		await runList<CashResponse>(
+		await runList<BankAccount[]>(
 			{
 				spinner: {
 					loading: 'Fetching bank accounts...',
@@ -44,7 +39,7 @@ export const cashCmd = new Command('cash')
 					return client.get('/bank-accounts', params);
 				},
 				onInteractive: (result) => {
-					const accounts = result.bankAccounts ?? [];
+					const accounts = result ?? [];
 					if (accounts.length === 0) {
 						console.log('\n  No bank accounts found.\n');
 						return;
