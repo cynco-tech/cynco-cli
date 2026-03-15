@@ -27,7 +27,7 @@ export const listCustomersCmd = new Command('list')
 	.description('List customers')
 	.option('-l, --limit <n>', 'Max results per page (1-100)', '20')
 	.option('--page <n>', 'Page number', '1')
-	.option('--sort <field>', 'Sort field', 'createdAt')
+	.option('--sort <field>', 'Sort field', 'created_at')
 	.option('--order <dir>', 'Sort order (asc|desc)', 'desc')
 	.addHelpText(
 		'after',

@@ -28,7 +28,7 @@ export const listBillsCmd = new Command('list')
 	.option('-l, --limit <n>', 'Max results per page (1-100)', '20')
 	.option('--page <n>', 'Page number', '1')
 	.option('--status <status>', 'Filter by status (draft|finalized|sent|paid|overdue|void)')
-	.option('--sort <field>', 'Sort field', 'createdAt')
+	.option('--sort <field>', 'Sort field', 'created_at')
 	.option('--order <dir>', 'Sort order (asc|desc)', 'desc')
 	.addHelpText(
 		'after',
