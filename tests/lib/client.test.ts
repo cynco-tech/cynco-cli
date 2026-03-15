@@ -314,6 +314,9 @@ describe('requireClient', () => {
 		setupOutputSpies();
 		mockExitThrow();
 		delete process.env.CYNCO_API_KEY;
+		// Prevent reading real credentials from ~/.config/cynco/
+		const config = await import('../../src/lib/config');
+		vi.spyOn(config, 'resolveApiKey').mockReturnValue(null);
 
 		const { requireClient } = await import('../../src/lib/client');
 
@@ -341,6 +344,10 @@ describe('createClient', () => {
 
 	test('throws when no API key available', async () => {
 		delete process.env.CYNCO_API_KEY;
+		// Prevent reading real credentials from ~/.config/cynco/
+		const config = await import('../../src/lib/config');
+		vi.spyOn(config, 'resolveApiKey').mockReturnValue(null);
+
 		const { createClient } = await import('../../src/lib/client');
 		expect(() => createClient()).toThrow('No API key found');
 	});
