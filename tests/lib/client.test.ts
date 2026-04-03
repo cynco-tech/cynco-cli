@@ -1,6 +1,17 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { captureTestEnv, ExitError, mockExitThrow, setupOutputSpies } from '../helpers';
 
+// Mock config so tests don't read the real ~/.config/cynco/credentials.json
+vi.mock('../../src/lib/config', () => ({
+	resolveApiKey: vi.fn((flagValue?: string) => {
+		if (flagValue) return { key: flagValue, source: 'flag' as const };
+		const envKey = process.env.CYNCO_API_KEY;
+		if (envKey) return { key: envKey, source: 'env' as const };
+		return null;
+	}),
+	listProfiles: vi.fn(() => []),
+}));
+
 describe('CyncoClient', () => {
 	const restoreEnv = captureTestEnv();
 
@@ -314,9 +325,6 @@ describe('requireClient', () => {
 		setupOutputSpies();
 		mockExitThrow();
 		delete process.env.CYNCO_API_KEY;
-		// Prevent reading real credentials from ~/.config/cynco/
-		const config = await import('../../src/lib/config');
-		vi.spyOn(config, 'resolveApiKey').mockReturnValue(null);
 
 		const { requireClient } = await import('../../src/lib/client');
 
@@ -344,10 +352,6 @@ describe('createClient', () => {
 
 	test('throws when no API key available', async () => {
 		delete process.env.CYNCO_API_KEY;
-		// Prevent reading real credentials from ~/.config/cynco/
-		const config = await import('../../src/lib/config');
-		vi.spyOn(config, 'resolveApiKey').mockReturnValue(null);
-
 		const { createClient } = await import('../../src/lib/client');
 		expect(() => createClient()).toThrow('No API key found');
 	});

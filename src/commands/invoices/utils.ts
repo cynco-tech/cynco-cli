@@ -1,16 +1,8 @@
 import { formatMoney, statusIndicator } from '../../lib/format';
 import { renderTable } from '../../lib/table';
+import type { Invoice } from '../../types/invoice';
 
-export interface Invoice {
-	id: string;
-	invoiceNumber?: string;
-	customerName?: string;
-	status?: string;
-	total?: number;
-	currency?: string;
-	dueDate?: string;
-	createdAt?: string;
-}
+export type { Invoice } from '../../types/invoice';
 
 export function renderInvoicesTable(invoices: Invoice[]): string {
 	const headers = ['Number', 'Customer', 'Status', 'Total', 'Currency', 'Due Date', 'ID'];
@@ -23,5 +15,8 @@ export function renderInvoicesTable(invoices: Invoice[]): string {
 		inv.dueDate ?? '-',
 		inv.id,
 	]);
-	return renderTable(headers, rows, 'No invoices found.');
+	return renderTable(headers, rows, {
+		message: 'No invoices found.',
+		suggestion: 'Create one with: cynco invoices create --customer-id <id>',
+	});
 }

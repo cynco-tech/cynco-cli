@@ -5,14 +5,7 @@ import type { GlobalOpts } from '../lib/client';
 import { formatMoney } from '../lib/format';
 import { buildHelpText } from '../lib/help-text';
 import { renderTable } from '../lib/table';
-
-interface BankAccount {
-	id: string;
-	name?: string;
-	currency?: string;
-	balance?: number;
-	accountType?: string;
-}
+import type { BankAccount, CashResponse } from '../types/bank';
 
 export const cashCmd = new Command('cash')
 	.description('Show cash position — all bank account balances')
@@ -26,7 +19,7 @@ export const cashCmd = new Command('cash')
 	.action(async (opts, cmd) => {
 		const globalOpts = cmd.optsWithGlobals() as GlobalOpts;
 
-		await runList<BankAccount[]>(
+		await runList<CashResponse>(
 			{
 				spinner: {
 					loading: 'Fetching bank accounts...',
@@ -39,9 +32,10 @@ export const cashCmd = new Command('cash')
 					return client.get('/bank-accounts', params);
 				},
 				onInteractive: (result) => {
-					const accounts = result ?? [];
+					const accounts = result.bankAccounts ?? [];
 					if (accounts.length === 0) {
-						console.log('\n  No bank accounts found.\n');
+						console.log('\n  No bank accounts found.');
+						console.log(pc.dim('  Connect a bank account in the dashboard: cynco open banking\n'));
 						return;
 					}
 
@@ -69,6 +63,16 @@ export const cashCmd = new Command('cash')
 						);
 					}
 					console.log('');
+				},
+				csv: {
+					headers: ['Account', 'Type', 'Currency', 'Balance'],
+					toRow: (a: BankAccount) => [
+						a.name ?? '',
+						a.accountType ?? '',
+						a.currency ?? '',
+						formatMoney(a.balance, a.currency),
+					],
+					getItems: (r) => (r as CashResponse).bankAccounts ?? [],
 				},
 			},
 			globalOpts,

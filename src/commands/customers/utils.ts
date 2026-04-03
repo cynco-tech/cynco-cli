@@ -1,13 +1,7 @@
 import { renderTable } from '../../lib/table';
+import type { Customer } from '../../types/customer';
 
-export interface Customer {
-	id: string;
-	name?: string;
-	email?: string;
-	phone?: string;
-	country?: string;
-	createdAt?: string;
-}
+export type { Customer } from '../../types/customer';
 
 export function renderCustomersTable(customers: Customer[]): string {
 	const headers = ['Name', 'Email', 'Phone', 'Country', 'ID'];
@@ -18,5 +12,8 @@ export function renderCustomersTable(customers: Customer[]): string {
 		c.country ?? '-',
 		c.id,
 	]);
-	return renderTable(headers, rows, 'No customers found.');
+	return renderTable(headers, rows, {
+		message: 'No customers found.',
+		suggestion: 'Add one with: cynco customers create --name "Company Name"',
+	});
 }

@@ -1,3 +1,4 @@
+import pc from 'picocolors';
 import { listProfiles, resolveApiKey } from './config';
 import { errorMessage, outputError } from './output';
 import { VERSION } from './version';
@@ -7,9 +8,25 @@ export type GlobalOpts = {
 	json?: boolean;
 	quiet?: boolean;
 	profile?: string;
+	verbose?: boolean;
+	output?: string;
+	agent?: boolean;
+	dryRun?: boolean;
 };
 
+let _verbose = false;
+
+export function setVerbose(enabled: boolean): void {
+	_verbose = enabled;
+}
+
+function debugLog(label: string, data: string): void {
+	if (!_verbose) return;
+	process.stderr.write(`${pc.dim(`[debug] ${label}:`)} ${data}\n`);
+}
+
 export const DEFAULT_BASE_URL = 'https://app.cynco.io';
+export const API_VERSION = '2026-04-01';
 
 type ApiSuccessResponse<T> = {
 	success: true;
@@ -46,7 +63,11 @@ type ApiRawResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 export type ApiResult<T> = {
 	data: T | null;
-	error: { message: string; code?: string } | null;
+	error: {
+		message: string;
+		code?: string;
+		details?: Array<{ field: string; message: string }>;
+	} | null;
 	headers?: Record<string, string> | null;
 	pagination?: {
 		page: number;
@@ -55,6 +76,7 @@ export type ApiResult<T> = {
 		totalPages: number;
 		hasMore: boolean;
 	} | null;
+	requestId?: string | null;
 };
 
 export class CyncoClient {
@@ -70,6 +92,7 @@ export class CyncoClient {
 		return {
 			Authorization: `Bearer ${this.apiKey}`,
 			'User-Agent': `cynco-cli/${VERSION}`,
+			'Cynco-API-Version': API_VERSION,
 		};
 	}
 
@@ -92,13 +115,22 @@ export class CyncoClient {
 			: null;
 
 		const json = (await res.json()) as ApiRawResponse<T>;
+		const requestId = json.meta?.requestId ?? null;
+
+		debugLog('status', String(res.status));
+		if (requestId) debugLog('requestId', requestId);
 
 		if (!json.success) {
 			const errResponse = json as ApiErrorResponse;
 			return {
 				data: null,
-				error: { message: errResponse.error.message, code: errResponse.error.code },
+				error: {
+					message: errResponse.error.message,
+					code: errResponse.error.code,
+					details: errResponse.error.details,
+				},
 				headers: responseHeaders,
+				requestId,
 			};
 		}
 
@@ -108,6 +140,7 @@ export class CyncoClient {
 			error: null,
 			headers: responseHeaders,
 			pagination: successResponse.pagination ?? null,
+			requestId,
 		};
 	}
 
@@ -122,6 +155,9 @@ export class CyncoClient {
 		if (body) {
 			headers['Content-Type'] = 'application/json';
 		}
+
+		debugLog('request', `${method} ${url.toString()}`);
+		if (body) debugLog('body', JSON.stringify(body));
 
 		const res = await fetch(url.toString(), {
 			method,

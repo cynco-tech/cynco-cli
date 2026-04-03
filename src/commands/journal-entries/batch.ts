@@ -5,18 +5,7 @@ import type { GlobalOpts } from '../../lib/client';
 import { readFile } from '../../lib/files';
 import { buildHelpText } from '../../lib/help-text';
 import { outputError } from '../../lib/output';
-
-interface BatchResult {
-	total: number;
-	succeeded: number;
-	failed: number;
-	results?: Array<{
-		index: number;
-		status: 'success' | 'error';
-		id?: string;
-		error?: string;
-	}>;
-}
+import type { BatchResult } from '../../types/journal-entry';
 
 export const batchCmd = new Command('batch')
 	.description('Batch create journal entries from a JSON file')

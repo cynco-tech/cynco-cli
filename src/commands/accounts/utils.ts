@@ -1,17 +1,8 @@
 import pc from 'picocolors';
 import { renderTable } from '../../lib/table';
+import type { Account } from '../../types/account';
 
-export interface Account {
-	id: string;
-	code?: string;
-	name?: string;
-	type?: string;
-	normalBalance?: string;
-	isActive?: boolean;
-	description?: string;
-	parentId?: string;
-	createdAt?: string;
-}
+export type { Account } from '../../types/account';
 
 export function accountTypeLabel(type?: string): string {
 	if (!type) return '-';
@@ -41,5 +32,8 @@ export function renderAccountsTable(accounts: Account[]): string {
 		a.isActive === false ? pc.red('No') : pc.green('Yes'),
 		a.id,
 	]);
-	return renderTable(headers, rows, 'No accounts found.');
+	return renderTable(headers, rows, {
+		message: 'No accounts found.',
+		suggestion: 'Accounts are managed in the dashboard: cynco open settings',
+	});
 }

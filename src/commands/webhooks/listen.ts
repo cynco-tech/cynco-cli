@@ -6,6 +6,7 @@ import { requireClient } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
 import { outputError } from '../../lib/output';
 import { isInteractive } from '../../lib/tty';
+import { verifyWebhookSignature } from '../../lib/webhook-verify';
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MB
 
@@ -14,6 +15,8 @@ export const listenCmd = new Command('listen')
 	.requiredOption('--forward-url <url>', 'Public URL that forwards to this port (e.g. ngrok URL)')
 	.option('--port <n>', 'Local port to listen on', '4400')
 	.option('--events <events>', 'Comma-separated events to subscribe to')
+	.option('--secret <secret>', 'Webhook signing secret for signature verification')
+	.option('--no-verify', 'Skip signature verification')
 	.addHelpText(
 		'after',
 		buildHelpText({
@@ -25,6 +28,8 @@ export const listenCmd = new Command('listen')
 				'cynco webhooks listen --forward-url https://abc123.ngrok-free.app',
 				'cynco webhooks listen --forward-url https://abc123.ngrok-free.app --port 8080',
 				'cynco webhooks listen --forward-url https://tunnel.example.com --events "invoice.paid,payment.received"',
+				'cynco webhooks listen --forward-url https://abc123.ngrok-free.app --secret whsec_abc123',
+				'cynco webhooks listen --forward-url https://abc123.ngrok-free.app --no-verify',
 			],
 		}),
 	)
@@ -126,26 +131,54 @@ export const listenCmd = new Command('listen')
 				eventCount++;
 				const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
+				// Signature verification
+				let sigStatus: 'valid' | 'invalid' | 'none' = 'none';
+				const signature = req.headers['cynco-signature'] as string | undefined;
+
+				if (opts.secret && opts.verify !== false) {
+					if (signature) {
+						sigStatus = verifyWebhookSignature(body, signature, opts.secret) ? 'valid' : 'invalid';
+					} else {
+						sigStatus = 'invalid';
+					}
+				}
+
+				const sigBadge =
+					sigStatus === 'valid'
+						? pc.green('\u2713')
+						: sigStatus === 'invalid'
+							? pc.yellow('\u2717 sig')
+							: '';
+
 				try {
 					const event = JSON.parse(body) as { type?: string; data?: unknown };
 
 					if (globalOpts.json) {
-						console.log(JSON.stringify(event));
+						const output: Record<string, unknown> = { ...event };
+						if (sigStatus !== 'none') {
+							output.signatureVerified = sigStatus === 'valid';
+						}
+						console.log(JSON.stringify(output));
 					} else {
 						const eventType = event.type ?? 'unknown';
-						console.log(`  ${pc.dim(timestamp)} ${pc.cyan(eventType)} ${pc.dim(`#${eventCount}`)}`);
+						const badge = sigBadge ? ` ${sigBadge}` : '';
+						process.stderr.write(
+							`  ${pc.dim(timestamp)} ${pc.cyan(eventType)} ${pc.dim(`#${eventCount}`)}${badge}\n`,
+						);
 						if (event.data) {
 							const preview = JSON.stringify(event.data).slice(0, 120);
-							console.log(`  ${pc.dim(preview)}${preview.length >= 120 ? '...' : ''}`);
+							process.stderr.write(`  ${pc.dim(preview)}${preview.length >= 120 ? '...' : ''}\n`);
 						}
-						console.log('');
+						process.stderr.write('\n');
 					}
 				} catch {
 					if (globalOpts.json) {
 						console.log(JSON.stringify({ raw: body }));
 					} else {
-						console.log(`  ${pc.dim(timestamp)} ${pc.yellow('unparseable')} ${body.slice(0, 100)}`);
-						console.log('');
+						process.stderr.write(
+							`  ${pc.dim(timestamp)} ${pc.yellow('unparseable')} ${body.slice(0, 100)}\n`,
+						);
+						process.stderr.write('\n');
 					}
 				}
 			});
@@ -162,17 +195,24 @@ export const listenCmd = new Command('listen')
 
 		server.listen(port, () => {
 			if (isInteractive()) {
-				console.log('');
-				console.log(`  ${pc.bold('Webhook listener started')}`);
-				console.log(`  ${pc.dim('Local:')}       http://localhost:${port}`);
-				console.log(`  ${pc.dim('Forward:')}     ${opts.forwardUrl}`);
-				console.log(`  ${pc.dim('Webhook ID:')}  ${webhookId}`);
+				process.stderr.write('\n');
+				process.stderr.write(`  ${pc.bold('Webhook listener started')}\n`);
+				process.stderr.write(`  ${pc.dim('Local:')}       http://localhost:${port}\n`);
+				process.stderr.write(`  ${pc.dim('Forward:')}     ${opts.forwardUrl}\n`);
+				process.stderr.write(`  ${pc.dim('Webhook ID:')}  ${webhookId}\n`);
 				if (opts.events) {
-					console.log(`  ${pc.dim('Events:')}      ${opts.events}`);
+					process.stderr.write(`  ${pc.dim('Events:')}      ${opts.events}\n`);
 				}
-				console.log('');
-				console.log(`  ${pc.dim('Waiting for events... Press Ctrl+C to stop.')}`);
-				console.log('');
+				if (opts.secret) {
+					process.stderr.write(`  ${pc.dim('Signature:')}   ${pc.green('verification enabled')}\n`);
+				} else if (opts.verify !== false) {
+					process.stderr.write(
+						`  ${pc.dim('Signature:')}   ${pc.yellow('not verified')} — add --secret to verify\n`,
+					);
+				}
+				process.stderr.write('\n');
+				process.stderr.write(`  ${pc.dim('Waiting for events... Press Ctrl+C to stop.')}\n`);
+				process.stderr.write('\n');
 			}
 		});
 	});

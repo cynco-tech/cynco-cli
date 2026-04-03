@@ -84,6 +84,7 @@ describe('invoices list command', () => {
 
 	afterEach(() => {
 		restoreEnv();
+		vi.restoreAllMocks();
 	});
 
 	test('lists invoices with default pagination', async () => {

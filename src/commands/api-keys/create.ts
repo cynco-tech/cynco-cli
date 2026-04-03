@@ -5,20 +5,15 @@ import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
 import { outputError } from '../../lib/output';
 import { requireText } from '../../lib/prompts';
+import { mergeStdinWithFlags, readStdinJson } from '../../lib/stdin';
+import type { CreateApiKeyResponse } from '../../types/api-key';
 import { validateScopes } from './utils';
-
-interface CreateApiKeyResponse {
-	id: string;
-	name: string;
-	key: string;
-	scopes: string[];
-	createdAt: string;
-}
 
 export const createApiKeyCmd = new Command('create')
 	.description('Create a new API key')
 	.option('--name <name>', 'API key name')
 	.option('--scopes <scopes>', 'Comma-separated scopes (e.g. invoices:read,customers:write)')
+	.option('--stdin', 'Read JSON body from stdin')
 	.addHelpText(
 		'after',
 		buildHelpText({
@@ -32,37 +27,51 @@ export const createApiKeyCmd = new Command('create')
 				'cynco api-keys create --name "CI/CD" --scopes "invoices:read,customers:read"',
 				'cynco api-keys create --name "Full Access" --scopes "*"',
 				'cynco api-keys create',
+				'echo \'{"name":"CI/CD","scopes":["invoices:read"]}\' | cynco api-keys create --stdin',
 			],
 		}),
 	)
 	.action(async (opts, cmd) => {
 		const globalOpts = cmd.optsWithGlobals() as GlobalOpts;
 
-		const name = await requireText(
-			opts.name,
-			{ message: 'API key name', placeholder: 'my-api-key' },
-			{ message: '--name is required', code: 'missing_name' },
-			globalOpts,
-		);
+		let body: Record<string, unknown>;
 
-		const scopesRaw = await requireText(
-			opts.scopes,
-			{ message: 'Scopes (comma-separated)', placeholder: 'invoices:read,customers:read' },
-			{ message: '--scopes is required', code: 'missing_scopes' },
-			globalOpts,
-		);
-
-		let scopes: string[];
-		try {
-			scopes = validateScopes(scopesRaw);
-		} catch (err) {
-			outputError(
-				{ message: err instanceof Error ? err.message : 'Invalid scopes', code: 'invalid_scopes' },
-				{ json: globalOpts.json },
+		if (opts.stdin) {
+			const stdinBody = readStdinJson(globalOpts.json);
+			body = mergeStdinWithFlags(stdinBody, {
+				name: opts.name,
+				scopes: opts.scopes ? validateScopes(opts.scopes) : undefined,
+			});
+		} else {
+			const name = await requireText(
+				opts.name,
+				{ message: 'API key name', placeholder: 'my-api-key' },
+				{ message: '--name is required', code: 'missing_name' },
+				globalOpts,
 			);
-		}
 
-		const body: Record<string, unknown> = { name, scopes };
+			const scopesRaw = await requireText(
+				opts.scopes,
+				{ message: 'Scopes (comma-separated)', placeholder: 'invoices:read,customers:read' },
+				{ message: '--scopes is required', code: 'missing_scopes' },
+				globalOpts,
+			);
+
+			let scopes: string[];
+			try {
+				scopes = validateScopes(scopesRaw);
+			} catch (err) {
+				outputError(
+					{
+						message: err instanceof Error ? err.message : 'Invalid scopes',
+						code: 'invalid_scopes',
+					},
+					{ json: globalOpts.json },
+				);
+			}
+
+			body = { name, scopes };
+		}
 
 		await runCreate<CreateApiKeyResponse>(
 			{

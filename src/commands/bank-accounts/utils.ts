@@ -1,16 +1,8 @@
 import { formatMoney } from '../../lib/format';
 import { renderTable } from '../../lib/table';
+import type { BankAccount } from '../../types/bank';
 
-export interface BankAccount {
-	id: string;
-	name?: string;
-	accountType?: string;
-	currency?: string;
-	balance?: number;
-	institutionName?: string;
-	accountNumber?: string;
-	createdAt?: string;
-}
+export type { BankAccount } from '../../types/bank';
 
 export function renderBankAccountsTable(accounts: BankAccount[]): string {
 	const headers = ['Name', 'Type', 'Currency', 'Balance', 'Institution', 'ID'];
@@ -22,5 +14,8 @@ export function renderBankAccountsTable(accounts: BankAccount[]): string {
 		a.institutionName ?? '-',
 		a.id,
 	]);
-	return renderTable(headers, rows, 'No bank accounts found.');
+	return renderTable(headers, rows, {
+		message: 'No bank accounts found.',
+		suggestion: 'Connect a bank account in the dashboard: cynco open banking',
+	});
 }

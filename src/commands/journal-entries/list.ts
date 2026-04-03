@@ -1,9 +1,16 @@
 import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
+import { formatMoney } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
-import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
-import type { JournalEntry } from './utils';
+import {
+	buildFilterParams,
+	buildPaginationParams,
+	parseLimitOpt,
+	parsePageOpt,
+	printPaginationHint,
+} from '../../lib/pagination';
+import type { JournalEntry, JournalEntryListResponse } from '../../types/journal-entry';
 import { renderJournalEntriesTable } from './utils';
 
 export const listCmd = new Command('list')
@@ -15,7 +22,10 @@ export const listCmd = new Command('list')
 		'--status <status>',
 		'Filter by status (draft, pending_approval, approved, posted, reversed, cancelled)',
 	)
+	.option('-s, --search <query>', 'Search by description or entry number')
 	.option('--period <period>', 'Filter by period (YYYY-MM)')
+	.option('--from <date>', 'Filter from date (YYYY-MM-DD)')
+	.option('--to <date>', 'Filter to date (YYYY-MM-DD)')
 	.option('--sort <field>', 'Sort field (e.g. createdAt, date, entryNumber)')
 	.option('--order <dir>', 'Sort order (asc, desc)')
 	.addHelpText(
@@ -24,9 +34,9 @@ export const listCmd = new Command('list')
 			examples: [
 				'cynco journal-entries list',
 				'cynco je ls --status posted',
-				'cynco journal-entries list --period 2026-03',
+				'cynco journal-entries list --search "supplies"',
+				'cynco journal-entries list --from 2026-01-01 --to 2026-03-31',
 				'cynco je list --sort date --order desc --limit 50',
-				'cynco journal-entries list --json',
 			],
 		}),
 	)
@@ -35,17 +45,15 @@ export const listCmd = new Command('list')
 		const limit = parseLimitOpt(opts.limit, globalOpts);
 		const page = parsePageOpt(opts.page, globalOpts);
 
-		const params: Record<string, string> = {
-			...buildPaginationParams(page, limit, opts.sort, opts.order),
-		};
-		if (opts.status) {
-			params.status = opts.status;
-		}
-		if (opts.period) {
-			params.period = opts.period;
-		}
+		const params = buildFilterParams(buildPaginationParams(page, limit, opts.sort, opts.order), {
+			status: opts.status,
+			search: opts.search,
+			period: opts.period,
+			from: opts.from,
+			to: opts.to,
+		});
 
-		await runList<JournalEntry[]>(
+		await runList<JournalEntryListResponse>(
 			{
 				spinner: {
 					loading: 'Fetching journal entries...',
@@ -54,7 +62,23 @@ export const listCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/journal-entries', params),
 				onInteractive: (result) => {
-					console.log(renderJournalEntriesTable(result ?? []));
+					console.log(renderJournalEntriesTable(result.journalEntries));
+					if (result.pagination) {
+						printPaginationHint(result.pagination);
+					}
+				},
+				csv: {
+					headers: ['Entry #', 'Date', 'Status', 'Description', 'Debit', 'Credit', 'ID'],
+					toRow: (e: JournalEntry) => [
+						e.entryNumber ?? '',
+						e.date ?? '',
+						e.status ?? '',
+						e.description ?? '',
+						formatMoney(e.totalDebit),
+						formatMoney(e.totalCredit),
+						e.id,
+					],
+					getItems: (r) => (r as JournalEntryListResponse).journalEntries ?? [],
 				},
 			},
 			globalOpts,

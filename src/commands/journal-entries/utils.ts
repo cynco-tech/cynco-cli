@@ -1,27 +1,9 @@
 import pc from 'picocolors';
 import { statusIndicator as baseStatusIndicator, formatMoney } from '../../lib/format';
 import { renderTable } from '../../lib/table';
+import type { JournalEntry } from '../../types/journal-entry';
 
-export interface JournalEntry {
-	id: string;
-	entryNumber?: string;
-	date?: string;
-	status?: string;
-	description?: string;
-	totalDebit?: number;
-	totalCredit?: number;
-	memo?: string;
-	createdAt?: string;
-	lines?: JournalEntryLine[];
-}
-
-export interface JournalEntryLine {
-	accountId: string;
-	accountName?: string;
-	debit?: number;
-	credit?: number;
-	description?: string;
-}
+export type { JournalEntry, JournalEntryLine } from '../../types/journal-entry';
 
 export function statusIndicator(status?: string): string {
 	return baseStatusIndicator(status, { reversed: pc.magenta });
@@ -38,5 +20,9 @@ export function renderJournalEntriesTable(entries: JournalEntry[]): string {
 		formatMoney(e.totalCredit),
 		e.id,
 	]);
-	return renderTable(headers, rows, 'No journal entries found.');
+	return renderTable(headers, rows, {
+		message: 'No journal entries found.',
+		suggestion:
+			'Create one with: cynco journal-entries create --date 2026-01-01 --description "Entry"',
+	});
 }

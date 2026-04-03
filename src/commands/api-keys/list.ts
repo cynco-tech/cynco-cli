@@ -2,8 +2,13 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
-import type { ApiKey } from './utils';
+import {
+	buildPaginationParams,
+	parseLimitOpt,
+	parsePageOpt,
+	printPaginationHint,
+} from '../../lib/pagination';
+import type { ApiKey, ApiKeyListResponse } from '../../types/api-key';
 import { renderApiKeysTable } from './utils';
 
 export const listApiKeysCmd = new Command('list')
@@ -23,7 +28,7 @@ export const listApiKeysCmd = new Command('list')
 		const page = parsePageOpt(opts.page, globalOpts);
 		const params = buildPaginationParams(page, limit);
 
-		await runList<ApiKey[]>(
+		await runList<ApiKeyListResponse>(
 			{
 				spinner: {
 					loading: 'Fetching API keys...',
@@ -32,7 +37,21 @@ export const listApiKeysCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/api-keys', params),
 				onInteractive: (result) => {
-					console.log(renderApiKeysTable(result ?? []));
+					console.log(renderApiKeysTable(result.apiKeys ?? []));
+					if (result.pagination) {
+						printPaginationHint(result.pagination);
+					}
+				},
+				csv: {
+					headers: ['Name', 'Key Prefix', 'Scopes', 'Last Used', 'ID'],
+					toRow: (k: ApiKey) => [
+						k.name ?? '',
+						k.keyPrefix ?? '',
+						k.scopes?.join(', ') ?? '',
+						k.lastUsedAt ?? '',
+						k.id,
+					],
+					getItems: (r) => (r as ApiKeyListResponse).apiKeys ?? [],
 				},
 			},
 			globalOpts,

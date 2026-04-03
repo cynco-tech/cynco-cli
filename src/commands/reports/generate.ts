@@ -5,6 +5,7 @@ import { buildHelpText } from '../../lib/help-text';
 import { outputError, outputResult } from '../../lib/output';
 import { requireSelect } from '../../lib/prompts';
 import { renderTable } from '../../lib/table';
+import type { ReportData } from '../../types/report';
 
 const REPORT_TYPES = [
 	'trial_balance',
@@ -17,17 +18,6 @@ const REPORT_TYPES = [
 ] as const;
 
 type ReportType = (typeof REPORT_TYPES)[number];
-
-interface ReportData {
-	type: string;
-	period?: string;
-	startDate?: string;
-	endDate?: string;
-	generatedAt?: string;
-	rows?: Array<Record<string, unknown>>;
-	summary?: Record<string, unknown>;
-	[key: string]: unknown;
-}
 
 function formatReportLabel(type: string): string {
 	return type

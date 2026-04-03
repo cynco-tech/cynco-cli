@@ -2,8 +2,14 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
-import type { Account } from './utils';
+import {
+	buildFilterParams,
+	buildPaginationParams,
+	parseLimitOpt,
+	parsePageOpt,
+	printPaginationHint,
+} from '../../lib/pagination';
+import type { Account, AccountListResponse } from '../../types/account';
 import { renderAccountsTable } from './utils';
 
 export const listCmd = new Command('list')
@@ -12,6 +18,7 @@ export const listCmd = new Command('list')
 	.option('-l, --limit <n>', 'Results per page (1-100)', '20')
 	.option('--page <n>', 'Page number', '1')
 	.option('--type <type>', 'Filter by account type (asset, liability, equity, revenue, expense)')
+	.option('-s, --search <query>', 'Search by name or code')
 	.option('--active-only', 'Show only active accounts')
 	.addHelpText(
 		'after',
@@ -19,9 +26,8 @@ export const listCmd = new Command('list')
 			examples: [
 				'cynco accounts list',
 				'cynco accounts ls --type asset',
+				'cynco accounts list --search "cash"',
 				'cynco accounts list --active-only --limit 50',
-				'cynco accounts list --page 2',
-				'cynco accounts list --json',
 			],
 		}),
 	)
@@ -30,17 +36,13 @@ export const listCmd = new Command('list')
 		const limit = parseLimitOpt(opts.limit, globalOpts);
 		const page = parsePageOpt(opts.page, globalOpts);
 
-		const params: Record<string, string> = {
-			...buildPaginationParams(page, limit),
-		};
-		if (opts.type) {
-			params.type = opts.type;
-		}
-		if (opts.activeOnly) {
-			params.activeOnly = 'true';
-		}
+		const params = buildFilterParams(buildPaginationParams(page, limit), {
+			type: opts.type,
+			search: opts.search,
+			activeOnly: opts.activeOnly ? 'true' : undefined,
+		});
 
-		await runList<Account[]>(
+		await runList<AccountListResponse>(
 			{
 				spinner: {
 					loading: 'Fetching accounts...',
@@ -49,7 +51,22 @@ export const listCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/accounts', params),
 				onInteractive: (result) => {
-					console.log(renderAccountsTable(result ?? []));
+					console.log(renderAccountsTable(result.accounts));
+					if (result.pagination) {
+						printPaginationHint(result.pagination);
+					}
+				},
+				csv: {
+					headers: ['Code', 'Name', 'Type', 'Normal Balance', 'Active', 'ID'],
+					toRow: (a: Account) => [
+						a.code ?? '',
+						a.name ?? '',
+						a.type ?? '',
+						a.normalBalance ?? '',
+						a.isActive === false ? 'No' : 'Yes',
+						a.id,
+					],
+					getItems: (r) => (r as AccountListResponse).accounts ?? [],
 				},
 			},
 			globalOpts,

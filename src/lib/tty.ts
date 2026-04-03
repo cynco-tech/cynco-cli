@@ -8,6 +8,9 @@ export function isInteractive(): boolean {
 	if (process.env.GITHUB_ACTIONS) {
 		return false;
 	}
+	if (process.env.CYNCO_AGENT === '1') {
+		return false;
+	}
 	if (process.env.TERM === 'dumb') {
 		return false;
 	}

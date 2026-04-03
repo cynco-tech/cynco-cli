@@ -1,9 +1,15 @@
 import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
+import { formatMoney } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
-import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
-import type { BankAccount } from './utils';
+import {
+	buildPaginationParams,
+	parseLimitOpt,
+	parsePageOpt,
+	printPaginationHint,
+} from '../../lib/pagination';
+import type { BankAccount, BankAccountListResponse } from '../../types/bank';
 import { renderBankAccountsTable } from './utils';
 
 export const listCmd = new Command('list')
@@ -30,7 +36,7 @@ export const listCmd = new Command('list')
 
 		const params = buildPaginationParams(page, limit);
 
-		await runList<BankAccount[]>(
+		await runList<BankAccountListResponse>(
 			{
 				spinner: {
 					loading: 'Fetching bank accounts...',
@@ -39,7 +45,22 @@ export const listCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/bank-accounts', params),
 				onInteractive: (result) => {
-					console.log(renderBankAccountsTable(result ?? []));
+					console.log(renderBankAccountsTable(result.bankAccounts));
+					if (result.pagination) {
+						printPaginationHint(result.pagination);
+					}
+				},
+				csv: {
+					headers: ['Name', 'Type', 'Currency', 'Balance', 'Institution', 'ID'],
+					toRow: (a: BankAccount) => [
+						a.name ?? '',
+						a.accountType ?? '',
+						a.currency ?? '',
+						formatMoney(a.balance, a.currency),
+						a.institutionName ?? '',
+						a.id,
+					],
+					getItems: (r) => (r as BankAccountListResponse).bankAccounts ?? [],
 				},
 			},
 			globalOpts,

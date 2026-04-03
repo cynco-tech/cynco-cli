@@ -41,15 +41,15 @@ export const whoami = new Command('whoami')
 		}
 
 		if (!globalOpts.json && isInteractive()) {
-			console.log(`${pc.bold('Profile:')}   ${profileName}`);
-			console.log(`${pc.bold('API Key:')}   ${maskKey(resolved.key)}`);
-			console.log(`${pc.bold('Source:')}    ${resolved.source}`);
-			console.log(`${pc.bold('Config:')}    ${configDir}`);
-
-			if (creds) {
-				const profileCount = Object.keys(creds.profiles).length;
-				console.log(`${pc.bold('Profiles:')}  ${profileCount} stored`);
-			}
+			const w = (s: string) => process.stderr.write(`${s}\n`);
+			const profileCount = creds ? Object.keys(creds.profiles).length : 0;
+			w('');
+			w(`  ${pc.dim('Profile')}     ${profileName}`);
+			w(`  ${pc.dim('API Key')}     ${maskKey(resolved.key)}`);
+			w(`  ${pc.dim('Source')}      ${resolved.source}`);
+			w(`  ${pc.dim('Config')}      ${configDir}`);
+			w(`  ${pc.dim('Profiles')}    ${profileCount} stored`);
+			w('');
 		} else {
 			outputResult(
 				{

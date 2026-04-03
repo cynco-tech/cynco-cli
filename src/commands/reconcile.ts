@@ -5,19 +5,7 @@ import type { GlobalOpts } from '../lib/client';
 import { formatMoney } from '../lib/format';
 import { buildHelpText } from '../lib/help-text';
 import { requireText } from '../lib/prompts';
-
-interface ReconcileStatus {
-	accountId: string;
-	accountName?: string;
-	currency?: string;
-	bookBalance?: number;
-	bankBalance?: number;
-	difference?: number;
-	totalTransactions?: number;
-	reconciledCount?: number;
-	unreconciledCount?: number;
-	period?: string;
-}
+import type { ReconcileStatus } from '../types/bank';
 
 export const reconcileCmd = new Command('reconcile')
 	.description('Bank reconciliation status')

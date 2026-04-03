@@ -1,5 +1,8 @@
 import { Command } from '@commander-js/extra-typings';
 import { buildHelpText } from '../../lib/help-text';
+import { batchFinalizeCmd } from './batch-finalize';
+import { batchSendCmd } from './batch-send';
+import { batchVoidCmd } from './batch-void';
 import { createInvoiceCmd } from './create';
 import { finalizeCmd } from './finalize';
 import { getInvoiceCmd } from './get';
@@ -22,6 +25,8 @@ export const invoicesCmd = new Command('invoices')
 				'cynco invoices finalize inv_abc123',
 				'cynco invoices send inv_abc123',
 				'cynco invoices record-payment inv_abc123 --amount 1500',
+				'cynco invoices batch-send inv_001 inv_002',
+				'cynco invoices batch-finalize --file ids.txt',
 			],
 		}),
 	)
@@ -32,4 +37,7 @@ export const invoicesCmd = new Command('invoices')
 	.addCommand(finalizeCmd)
 	.addCommand(sendInvoiceCmd)
 	.addCommand(voidCmd)
-	.addCommand(recordPaymentCmd);
+	.addCommand(recordPaymentCmd)
+	.addCommand(batchSendCmd)
+	.addCommand(batchFinalizeCmd)
+	.addCommand(batchVoidCmd);

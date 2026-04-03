@@ -20,8 +20,13 @@ const MAX_RETRIES = DEFAULT_RETRY_DELAYS.length;
 
 type ApiResponse<T> = {
 	data: T | null;
-	error: { message: string; code?: string } | null;
+	error: {
+		message: string;
+		code?: string;
+		details?: Array<{ field: string; message: string }>;
+	} | null;
 	headers?: Record<string, string> | null;
+	requestId?: string | null;
 };
 
 function parseRetryDelay(headers?: Record<string, string> | null): number | undefined {
@@ -49,7 +54,7 @@ export async function withSpinner<T>(
 	const spinner = createSpinner(messages.loading, globalOpts.quiet);
 	try {
 		for (let attempt = 0; ; attempt++) {
-			const { data, error, headers } = await call();
+			const { data, error, headers, requestId } = await call();
 			if (error) {
 				if (attempt < MAX_RETRIES && error.code === 'RATE_LIMITED') {
 					const delay = parseRetryDelay(headers) ?? DEFAULT_RETRY_DELAYS[attempt] ?? 4;
@@ -59,7 +64,10 @@ export async function withSpinner<T>(
 					continue;
 				}
 				spinner.fail(messages.fail);
-				outputError({ message: error.message, code: errorCode }, { json: globalOpts.json });
+				outputError(
+					{ message: error.message, code: errorCode, requestId, details: error.details },
+					{ json: globalOpts.json },
+				);
 			}
 			if (data === null) {
 				spinner.fail(messages.fail);

@@ -156,6 +156,12 @@ export async function checkForUpdates(): Promise<void> {
 
 	const latest = await fetchLatestVersion();
 	if (!latest) {
+		// Still update lastChecked so we don't retry on every command when offline
+		try {
+			writeState({ lastChecked: now, latestVersion: state?.latestVersion ?? VERSION });
+		} catch {
+			// best-effort
+		}
 		return;
 	}
 

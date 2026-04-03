@@ -26,6 +26,7 @@ export const finalizeCmd = new Command('finalize')
 				apiCall: (client) => client.post(`/invoices/${id}/finalize`, {}),
 				errorCode: 'finalize_error',
 				successMsg: `Invoice ${id} finalized. Send it with: cynco invoices send ${id}`,
+				dryRunAction: `finalize invoice ${id}`,
 			},
 			globalOpts,
 		);

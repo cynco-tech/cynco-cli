@@ -2,430 +2,336 @@
 
 The official CLI for [Cynco](https://cynco.io) — AI Native Accounting.
 
-Built for humans, AI agents, and CI/CD pipelines.
+```text
+   ██████╗██╗   ██╗███╗   ██╗ ██████╗ ██████╗
+  ██╔════╝╚██╗ ██╔╝████╗  ██║██╔════╝██╔═══██╗
+  ██║      ╚████╔╝ ██╔██╗ ██║██║     ██║   ██║
+  ██║       ╚██╔╝  ██║╚██╗██║██║     ██║   ██║
+  ╚██████╗   ██║   ██║ ╚████║╚██████╗╚██████╔╝
+   ╚═════╝   ╚═╝   ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝
+```
 
-```
- ██████╗██╗   ██╗███╗   ██╗ ██████╗ ██████╗
-██╔════╝╚██╗ ██╔╝████╗  ██║██╔════╝██╔═══██╗
-██║      ╚████╔╝ ██╔██╗ ██║██║     ██║   ██║
-██║       ╚██╔╝  ██║╚██╗██║██║     ██║   ██║
-╚██████╗   ██║   ██║ ╚████║╚██████╗╚██████╔╝
- ╚═════╝   ╚═╝   ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝
-```
+Full double-entry accounting from your terminal. Built for humans, AI agents, and CI/CD pipelines.
 
 ## Install
 
-### cURL
-
 ```sh
-curl -fsSL https://cynco.io/install.sh | bash
-```
-
-### Node.js
-
-```sh
+# npm
 npm install -g cynco-cli
-```
 
-### PowerShell (Windows)
+# curl (macOS / Linux)
+curl -fsSL https://cynco.io/install.sh | bash
 
-```sh
+# PowerShell (Windows)
 irm https://cynco.io/install.ps1 | iex
 ```
 
-Or download the binary directly from the [GitHub releases page](https://github.com/cynco-tech/cynco-cli/releases/latest).
-
-## Local development
-
-Use this when you want to change the CLI and run your build locally.
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org) 20+
-
-### Setup
-
-1. **Clone the repo**
-
-   ```bash
-   git clone https://github.com/cynco-tech/cynco-cli.git
-   cd cynco-cli
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   pnpm install
-   ```
-
-3. **Build locally**
-
-   ```bash
-   pnpm build
-   ```
-
-   Output: `./dist/cli.cjs`
-
-### Running the CLI locally
-
-Use the dev script:
-
-```bash
-pnpm dev --version
-```
-
-Or run the built JS bundle:
-
-```bash
-node dist/cli.cjs --version
-```
-
-### Making changes
-
-After editing source files, rebuild:
-
-```bash
-pnpm build
-```
-
-### Building native binaries
-
-To build a standalone native binary:
-
-```bash
-pnpm build:bin
-```
-
-Output: `./dist/cynco`
+Or download a binary from the [releases page](https://github.com/cynco-labs/cynco-cli/releases/latest).
 
 ## Quick start
 
 ```bash
-# Authenticate
-cynco login
-
-# List your invoices
-cynco invoices list
-
-# Create a customer
-cynco customers create --name "Acme Corp" --email acme@example.com
-
-# Generate a financial report
-cynco reports generate --type trial_balance --period 2026-03
-
-# Check your environment
-cynco doctor
+cynco login                        # Authenticate via browser
+cynco status                       # Business health overview
+cynco invoices list                # List invoices
+cynco tb --period 2026-03          # Trial Balance
+cynco extract ./invoice.pdf        # AI document extraction
+cynco doctor                       # Verify connectivity
 ```
-
----
 
 ## Authentication
 
-The CLI resolves your API key using the following priority chain:
+Three ways to authenticate, in priority order:
 
-| Priority | Source | How to set |
-|----------|--------|------------|
-| 1 (highest) | `--api-key` flag | `cynco --api-key cak_xxx invoices list` |
-| 2 | `CYNCO_API_KEY` env var | `export CYNCO_API_KEY=cak_xxx` |
-| 3 (lowest) | Config file | `cynco login` |
+| Priority | Method | Usage |
+|----------|--------|-------|
+| 1 | `--api-key` flag | `cynco --api-key cak_xxx invoices list` |
+| 2 | `CYNCO_API_KEY` env | `export CYNCO_API_KEY=cak_xxx` |
+| 3 | Stored profile | `cynco login` |
 
-If no key is found from any source, the CLI errors with code `auth_error`.
-
----
-
-## Commands
-
-### `cynco login`
-
-Authenticate by storing your API key locally. The key is validated against the Cynco API before being saved.
+### Browser login (recommended)
 
 ```bash
 cynco login
 ```
 
-#### Interactive mode (default in terminals)
+Opens your browser for one-click authorization. A verification code is displayed in your terminal — confirm it matches in the browser, click Authorize, done.
 
-When run in a terminal, the command checks for an existing key:
-
-- **No key found** — Offers to open the Cynco API keys dashboard in your browser so you can create one, then prompts for the key.
-- **Existing key found** — Shows the key source (`env`, `config`) and prompts for a new key to replace it.
-
-The key is entered via a masked password input and must start with `cak_`.
-
-#### Non-interactive mode (CI, pipes, scripts)
-
-When stdin is not a TTY, the `--key` flag is required:
+### Multi-profile
 
 ```bash
-cynco login --key cak_xxxxxxxxxxxxx
+cynco login --profile production       # Store key under "production"
+cynco invoices list --profile staging  # Use a specific profile
+cynco auth switch                      # Switch active profile
+cynco auth list                        # List all profiles
 ```
 
-Omitting `--key` in non-interactive mode exits with error code `missing_key`.
-
-#### Options
-
-| Flag | Description |
-|------|-------------|
-| `--key <key>` | API key to store (required in non-interactive mode) |
-| `--profile <name>` | Profile name to store the key under (default: "default") |
-
-#### Output
-
-On success, credentials are saved to `~/.config/cynco/credentials.json` with `0600` permissions (owner read/write only). The config directory is created with `0700` permissions.
+### CI / Automation
 
 ```bash
-# JSON output
-cynco login --key cak_xxx --json
-# => {"success":true,"config_path":"/Users/you/.config/cynco/credentials.json"}
+# Environment variable — no login needed
+CYNCO_API_KEY=${{ secrets.CYNCO_API_KEY }} cynco invoices list --agent
+
+# Piped token
+echo '{"token":"cak_xxx"}' | cynco login --token-stdin
 ```
 
-#### Error codes
+## Commands
 
-| Code | Cause |
-|------|-------|
-| `missing_key` | No `--key` provided in non-interactive mode |
-| `invalid_key_format` | Key does not start with `cak_` |
-| `invalid_key` | Cynco API rejected the key |
-
-#### Switch between profiles
-
-If you work across multiple Cynco accounts, the CLI supports multi-profile authentication:
-
-```bash
-# Switch active profile
-cynco auth switch
-
-# Use a specific profile for one command
-cynco invoices list --profile production
-```
-
----
-
-### `cynco invoices list`
-
-List invoices with pagination and filtering.
-
-```bash
-cynco invoices list
-cynco invoices list --limit 50
-```
-
----
-
-### `cynco customers create`
-
-Create a new customer. Provide fields via flags for scripting, or let the CLI prompt interactively.
-
-```bash
-cynco customers create --name "Acme Corp" --email acme@example.com
-```
-
-#### Options
-
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--name <name>` | Yes | Customer name |
-| `--email <email>` | No | Contact email |
-| `--phone <phone>` | No | Contact phone |
-| `--address <address>` | No | Address |
-| `--tax-number <number>` | No | Tax registration number |
-
----
-
-### `cynco reports generate`
-
-Generate financial reports. Supports 7 report types.
-
-```bash
-cynco reports generate --type trial_balance --period 2026-03
-cynco reports generate --type balance_sheet --start-date 2026-01-01 --end-date 2026-03-31
-```
-
-#### Report types
-
-`trial_balance`, `balance_sheet`, `income_statement`, `cash_flow`, `general_ledger`, `aged_receivables`, `aged_payables`
-
-#### Options
-
-| Flag | Description |
-|------|-------------|
-| `--type <type>` | Report type (required) |
-| `--period <YYYY-MM>` | Report period |
-| `--start-date <YYYY-MM-DD>` | Start date (for date range) |
-| `--end-date <YYYY-MM-DD>` | End date (for date range) |
-| `--format <json\|csv>` | Output format |
-
----
-
-### `cynco doctor`
-
-Run environment diagnostics. Verifies your CLI version, API key, and API connectivity.
-
-```bash
-cynco doctor
-```
-
-#### Checks performed
-
-| Check | Pass | Warn | Fail |
-|-------|------|------|------|
-| **CLI Version** | Running latest | Update available | — |
-| **API Key** | Key found (shows masked key + source) | — | No key found |
-| **API Connectivity** | API reachable | — | Cannot connect |
-
-#### JSON mode
-
-```bash
-cynco doctor --json
-```
-
-```json
-{
-  "ok": true,
-  "checks": [
-    { "name": "CLI Version", "status": "pass", "message": "v0.1.0 (latest)" },
-    { "name": "API Key", "status": "pass", "message": "cak_...xxxx (source: env)" },
-    { "name": "API Connectivity", "status": "pass", "message": "OK (238ms)" }
-  ]
-}
-```
-
----
-
-### All commands
+### Accounting
 
 | Command | Description |
 |---------|-------------|
-| `cynco login` | Log in to your Cynco account |
-| `cynco logout` | Log out and remove stored credentials |
-| `cynco auth list` | List stored profiles |
-| `cynco auth switch` | Switch active profile |
-| `cynco auth rename` | Rename a profile |
-| `cynco auth remove` | Remove a profile |
-| `cynco invoices list` | List invoices |
-| `cynco invoices get <id>` | Get invoice details |
-| `cynco invoices create` | Create an invoice |
-| `cynco customers list` | List customers |
-| `cynco customers get <id>` | Get customer details |
-| `cynco customers create` | Create a customer |
-| `cynco customers update <id>` | Update a customer |
-| `cynco customers delete <id>` | Delete a customer |
-| `cynco vendors list` | List vendors |
-| `cynco vendors get <id>` | Get vendor details |
-| `cynco vendors create` | Create a vendor |
-| `cynco vendors update <id>` | Update a vendor |
-| `cynco vendors delete <id>` | Delete a vendor |
-| `cynco bills list` | List bills |
-| `cynco bills get <id>` | Get bill details |
-| `cynco bills create` | Create a bill |
-| `cynco items list` | List items |
-| `cynco items get <id>` | Get item details |
-| `cynco items create` | Create an item |
-| `cynco items update <id>` | Update an item |
-| `cynco items delete <id>` | Delete an item |
-| `cynco accounts list` | List chart of accounts |
-| `cynco accounts get <id>` | Get account details |
-| `cynco journal-entries list` | List journal entries |
-| `cynco journal-entries get <id>` | Get journal entry details |
-| `cynco journal-entries create` | Create a journal entry |
-| `cynco bank-accounts list` | List bank accounts |
-| `cynco bank-accounts get <id>` | Get bank account details |
-| `cynco bank-transactions list` | List bank transactions |
-| `cynco bank-transactions get <id>` | Get bank transaction details |
-| `cynco api-keys list` | List API keys |
-| `cynco api-keys create` | Create an API key |
-| `cynco api-keys delete <id>` | Delete an API key |
-| `cynco webhooks list` | List webhooks |
-| `cynco webhooks get <id>` | Get webhook details |
-| `cynco webhooks create` | Create a webhook |
-| `cynco webhooks update <id>` | Update a webhook |
-| `cynco webhooks delete <id>` | Delete a webhook |
-| `cynco reports generate` | Generate a financial report |
-| `cynco doctor` | Run environment diagnostics |
-| `cynco open <page>` | Open Cynco pages in your browser |
-| `cynco whoami` | Show current authenticated profile |
-| `cynco update` | Check for CLI updates |
+| `cynco accounts list` | Chart of accounts |
+| `cynco journal-entries create` | Create journal entry with debit/credit lines |
+| `cynco journal-entries batch` | Batch import journal entries |
+| `cynco tb` | Trial Balance |
+| `cynco bs` | Balance Sheet |
+| `cynco pl` | Profit & Loss (Income Statement) |
+| `cynco ar` | Aged Receivables |
+| `cynco ap` | Aged Payables |
+| `cynco reports generate` | Generate any of 7 report types |
 
----
+### Invoicing
 
-## Global options
+| Command | Description |
+|---------|-------------|
+| `cynco invoices list` | List with search, filter, pagination |
+| `cynco invoices create` | Create with line items (`--items` or interactive) |
+| `cynco invoices send <id>` | Send to customer via email |
+| `cynco invoices finalize <id>` | Mark as finalized |
+| `cynco invoices void <id>` | Void (irreversible) |
+| `cynco invoices record-payment <id>` | Record payment received |
+| `cynco invoices overdue` | Overdue list with aging buckets |
+| `cynco invoices batch-send` | Bulk send multiple invoices |
+| `cynco invoices batch-finalize` | Bulk finalize |
+| `cynco invoices batch-void` | Bulk void |
 
-These flags work on every command and are passed before the subcommand:
+### Customers, Vendors, Bills, Items
+
+Full CRUD on all resources: `list`, `get`, `create`, `update`, `delete`.
 
 ```bash
-cynco [global options] <command> [command options]
+cynco customers create --name "Acme Corp" --email acme@example.com
+cynco vendors list --search "supplier"
+cynco bills create --vendor-id vend_xxx --items @items.json
+cynco items update itm_xxx --unit-price 200
+```
+
+### Banking
+
+| Command | Description |
+|---------|-------------|
+| `cynco bank-accounts list` | All connected accounts |
+| `cynco bank-transactions list` | Transaction history |
+| `cynco bank-transactions import` | Import from CSV |
+| `cynco cash` | Cash position across all accounts |
+| `cynco reconcile` | Reconciliation status |
+
+### AI
+
+| Command | Description |
+|---------|-------------|
+| `cynco extract ./invoice.pdf` | Extract data from any document using AI |
+
+### Platform
+
+| Command | Description |
+|---------|-------------|
+| `cynco status` | Business health dashboard |
+| `cynco config set/get/list` | Persistent CLI settings |
+| `cynco history` | Command audit trail |
+| `cynco doctor` | Environment diagnostics (7 checks) |
+| `cynco whoami` | Current auth profile |
+| `cynco api-keys create` | Manage API keys |
+| `cynco webhooks listen` | Local webhook dev server |
+| `cynco mcp serve` | MCP server for AI agents |
+| `cynco completion install` | Shell completions (bash/zsh/fish) |
+
+## Global flags
+
+```bash
+cynco [flags] <command> [options]
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--api-key <key>` | Override API key for this invocation (takes highest priority) |
-| `-p, --profile <name>` | Profile to use (overrides `CYNCO_PROFILE` env var) |
-| `--json` | Force JSON output even in interactive terminals |
-| `-q, --quiet` | Suppress spinners and status output (implies `--json`) |
-| `-v, --version` | Print version and exit |
-| `--help` | Show help text |
+| `--api-key <key>` | Override API key |
+| `-p, --profile <name>` | Use specific profile |
+| `--json` | Force JSON output |
+| `-q, --quiet` | Suppress spinners (implies `--json`) |
+| `--agent` | Agent mode: JSON, no prompts, no spinners |
+| `-n, --dry-run` | Preview destructive operations |
+| `--verbose` | Show request/response debug info |
+| `-o, --output <fmt>` | Output format: `table`, `json`, `csv` |
 
----
+## Agent & MCP
 
-## Output behavior
+### `--agent` flag
 
-The CLI has two output modes:
+Single flag for full machine-readable mode. Forces JSON, suppresses all prompts and spinners.
 
-| Mode | When | Stdout | Stderr |
-|------|------|--------|--------|
-| **Interactive** | Terminal (TTY) | Formatted text | Spinners, prompts |
-| **Machine** | Piped, CI, or `--json` | JSON | Nothing |
+```bash
+cynco invoices list --agent
+CYNCO_AGENT=1 cynco customers list    # Environment variable equivalent
+```
 
-Switching is automatic — pipe to another command and JSON output activates:
+### `--stdin` for piped input
+
+All create and update commands accept JSON bodies from stdin:
+
+```bash
+echo '{"name":"Acme","email":"a@b.com"}' | cynco customers create --stdin
+cat customer.json | cynco customers update cust_xxx --stdin
+```
+
+Explicit flags override stdin fields.
+
+### Pipe chains
+
+```bash
+# List finalized invoices → batch send them
+cynco invoices list --status finalized --json | cynco invoices batch-send --stdin
+
+# Smart ID extraction from JSON arrays, objects, NDJSON
+cynco customers list --json | cynco customers batch-delete --stdin
+```
+
+### `--dry-run`
+
+Preview destructive operations without executing:
+
+```bash
+cynco invoices void inv_xxx --dry-run        # Shows what would happen
+cynco customers delete cust_xxx --dry-run    # Preview without deleting
+cynco customers update cust_xxx --name "New" --dry-run  # Colored diff preview
+```
+
+### MCP server
+
+Expose every CLI command as an [MCP](https://modelcontextprotocol.io) tool for AI agents:
+
+```bash
+cynco mcp serve
+```
+
+Configure in Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "cynco": {
+      "command": "cynco",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+Tools are auto-generated from the CLI command tree. Adding a new CLI command automatically creates an MCP tool.
+
+## Output
+
+| Context | Stdout | Stderr |
+|---------|--------|--------|
+| Terminal (TTY) | Formatted tables | Spinners, prompts |
+| Piped / `--json` | Clean JSON | Nothing |
+| `--agent` | Clean JSON | Nothing |
+| `-o csv` | CSV data | Nothing |
+
+Pipe to any tool and JSON activates automatically:
 
 ```bash
 cynco invoices list | jq '.[0].id'
-cynco doctor | jq '.checks[].name'
+cynco invoices list -o csv > invoices.csv
 ```
 
-### Error output
-
-Errors always exit with code `1` and output structured JSON to stdout:
+Errors always exit code `1`:
 
 ```json
-{ "error": { "message": "No API key found", "code": "auth_error" } }
+{"error": {"message": "Not found", "code": "not_found", "requestId": "req_xxx"}}
 ```
 
----
+Validation errors include flag hints:
 
-## Agent & CI/CD usage
-
-### CI/CD
-
-Set `CYNCO_API_KEY` as an environment variable — no `cynco login` needed:
-
-```yaml
-# GitHub Actions
-env:
-  CYNCO_API_KEY: ${{ secrets.CYNCO_API_KEY }}
-steps:
-  - run: |
-      cynco invoices list --json | jq length
 ```
-
-### AI agents
-
-Agents calling the CLI as a subprocess automatically get JSON output (non-TTY detection). The contract:
-
-- **Input:** All required flags must be provided (no interactive prompts)
-- **Output:** JSON to stdout, nothing to stderr
-- **Exit code:** `0` success, `1` error
-- **Errors:** Always include `message` and `code` fields
-
----
+Error: Validation failed
+  customerId: Required — try: --customer-id <id>
+  dueDate: Invalid format — try: --due-date <YYYY-MM-DD>
+```
 
 ## Configuration
 
-| Item | Path | Notes |
-|------|------|-------|
-| Config directory | `~/.config/cynco/` | Respects `$XDG_CONFIG_HOME` on Linux, `%APPDATA%` on Windows |
-| Credentials | `~/.config/cynco/credentials.json` | `0600` permissions (owner read/write) |
-| Install directory | `~/.cynco/bin/` | Respects `$CYNCO_INSTALL` |
+| File | Purpose |
+|------|---------|
+| `~/.config/cynco/credentials.json` | API keys (0600 permissions) |
+| `~/.config/cynco/settings.json` | Persistent settings |
+| `~/.config/cynco/history.jsonl` | Command history |
+
+Respects `$XDG_CONFIG_HOME` on Linux, `%APPDATA%` on Windows.
+
+### Persistent settings
+
+```bash
+cynco config set output.format json
+cynco config set defaults.currency MYR
+cynco config set defaults.limit 50
+cynco config set api.timeout 60000
+cynco config list
+cynco config reset
+```
+
+## Development
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org) 20+
+- [pnpm](https://pnpm.io) 10+
+
+### Setup
+
+```bash
+git clone https://github.com/cynco-labs/cynco-cli.git
+cd cynco-cli
+pnpm install
+```
+
+### Commands
+
+```bash
+pnpm dev              # Run via tsx
+pnpm build            # Bundle to dist/cli.cjs
+pnpm build:bin        # Native binary (macOS/Linux/Windows)
+pnpm typecheck        # TypeScript strict mode
+pnpm lint             # Biome check
+pnpm test             # 443 tests via Vitest
+pnpm test:coverage    # Coverage report (~70% lines)
+```
+
+### Architecture
+
+```
+src/
+├── cli.ts              Entry point — Commander program, global flags, branding
+├── commands/           One directory per resource (14 groups, 130+ files)
+├── lib/                Shared utilities (20 modules)
+│   ├── client.ts       HTTP client with retry and API versioning
+│   ├── actions.ts      runGet/runList/runCreate/runDelete/runWrite helpers
+│   ├── table.ts        Borderless whitespace-aligned table renderer
+│   ├── branding.ts     ASCII logo, session bar, quick-start
+│   ├── stdin.ts        JSON stdin reading and flag merging
+│   ├── batch.ts        Batch runner with concurrency and progress bars
+│   ├── diff.ts         Colored before/after diff for dry-run
+│   ├── settings.ts     Persistent settings store
+│   ├── history.ts      Command history (JSONL, auto-rotation)
+│   ├── error-hints.ts  API field → CLI flag hint mapping
+│   └── ...
+├── mcp/                MCP server (auto-generated tools from Commander tree)
+├── types/              Shared API response types (14 files)
+└── tests/              90 test files, 443 tests
+```
+
+**5 runtime dependencies:** Commander, @clack/prompts, picocolors, @modelcontextprotocol/sdk.
 
 ## License
 

@@ -1,14 +1,8 @@
 import { formatMoney, formatPercent } from '../../lib/format';
 import { renderTable } from '../../lib/table';
+import type { Item } from '../../types/item';
 
-export interface Item {
-	id: string;
-	name?: string;
-	description?: string;
-	unitPrice?: number;
-	taxRate?: number;
-	createdAt?: string;
-}
+export type { Item } from '../../types/item';
 
 export function renderItemsTable(items: Item[]): string {
 	const headers = ['Name', 'Description', 'Unit Price', 'Tax Rate', 'ID'];
@@ -19,5 +13,8 @@ export function renderItemsTable(items: Item[]): string {
 		formatPercent(item.taxRate),
 		item.id,
 	]);
-	return renderTable(headers, rows, 'No items found.');
+	return renderTable(headers, rows, {
+		message: 'No items found.',
+		suggestion: 'Create one with: cynco items create --name "Item" --unit-price 100',
+	});
 }

@@ -8,7 +8,7 @@ import { isInteractive } from '../lib/tty';
 
 const DASHBOARD_URL = 'https://app.cynco.io';
 
-const PAGES: Record<string, string> = {
+const KNOWN_PAGES: Record<string, string> = {
 	dashboard: '/',
 	invoices: '/invoices',
 	customers: '/customers',
@@ -17,34 +17,37 @@ const PAGES: Record<string, string> = {
 	reports: '/reports',
 	settings: '/settings',
 	'api-keys': '/settings/api-keys',
+	extract: '/extract',
+	banking: '/banking',
+	accounting: '/accounting',
 };
 
 export const open = new Command('open')
 	.description('Open the Cynco dashboard in your browser')
-	.argument('[page]', 'Page to open (e.g., invoices, settings, api-keys)')
+	.argument('[page]', 'Page to open (e.g., invoices, settings) — any path accepted')
 	.addHelpText(
 		'after',
 		buildHelpText({
-			context: `Available pages: ${Object.keys(PAGES).join(', ')}`,
-			examples: ['cynco open', 'cynco open invoices', 'cynco open settings', 'cynco open api-keys'],
+			context: `Known shortcuts: ${Object.keys(KNOWN_PAGES).join(', ')}\n  Any other value is used as a path: cynco open /my/custom/page`,
+			examples: [
+				'cynco open',
+				'cynco open invoices',
+				'cynco open settings',
+				'cynco open /dashboard/banking/fac_abc123',
+			],
 		}),
 	)
 	.action(async (page) => {
 		const globalOpts = open.optsWithGlobals() as GlobalOpts;
 
-		const path = page ? PAGES[page] : '/';
-		if (page && !path) {
-			const available = Object.keys(PAGES).join(', ');
-			if (!globalOpts.json && isInteractive()) {
-				console.log(`${pc.yellow('Unknown page:')} "${page}". Available: ${available}`);
-			} else {
-				outputResult(
-					{ error: `Unknown page: ${page}`, available: Object.keys(PAGES) },
-					{ json: globalOpts.json },
-				);
-			}
-			process.exitCode = 1;
-			return;
+		let path: string;
+		if (!page) {
+			path = '/';
+		} else if (KNOWN_PAGES[page]) {
+			path = KNOWN_PAGES[page];
+		} else {
+			// Accept any path — prefix with / if missing
+			path = page.startsWith('/') ? page : `/${page}`;
 		}
 
 		const url = `${DASHBOARD_URL}${path}`;

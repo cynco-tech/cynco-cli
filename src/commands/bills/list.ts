@@ -1,9 +1,16 @@
 import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
+import { formatMoney } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
-import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
-import type { Bill } from './utils';
+import {
+	buildFilterParams,
+	buildPaginationParams,
+	parseLimitOpt,
+	parsePageOpt,
+	printPaginationHint,
+} from '../../lib/pagination';
+import type { Bill, BillListResponse } from '../../types/bill';
 import { renderBillsTable } from './utils';
 
 export const listBillsCmd = new Command('list')
@@ -12,7 +19,11 @@ export const listBillsCmd = new Command('list')
 	.option('-l, --limit <n>', 'Max results per page (1-100)', '20')
 	.option('--page <n>', 'Page number', '1')
 	.option('--status <status>', 'Filter by status (draft|finalized|sent|paid|overdue|void)')
-	.option('--sort <field>', 'Sort field', 'created_at')
+	.option('-s, --search <query>', 'Search by bill number, vendor name')
+	.option('--from <date>', 'Filter from date (YYYY-MM-DD)')
+	.option('--to <date>', 'Filter to date (YYYY-MM-DD)')
+	.option('--vendor-id <id>', 'Filter by vendor ID')
+	.option('--sort <field>', 'Sort field', 'createdAt')
 	.option('--order <dir>', 'Sort order (asc|desc)', 'desc')
 	.addHelpText(
 		'after',
@@ -21,8 +32,8 @@ export const listBillsCmd = new Command('list')
 				'cynco bills list',
 				'cynco bills ls --limit 50',
 				'cynco bills list --status paid',
-				'cynco bills list --sort dueDate --order asc',
-				'cynco bills list --page 2',
+				'cynco bills list --search "Parts"',
+				'cynco bills list --from 2026-01-01 --to 2026-03-31',
 			],
 		}),
 	)
@@ -30,12 +41,15 @@ export const listBillsCmd = new Command('list')
 		const globalOpts = cmd.optsWithGlobals() as GlobalOpts;
 		const limit = parseLimitOpt(opts.limit, globalOpts);
 		const page = parsePageOpt(opts.page, globalOpts);
-		const params = buildPaginationParams(page, limit, opts.sort, opts.order);
-		if (opts.status) {
-			params.status = opts.status;
-		}
+		const params = buildFilterParams(buildPaginationParams(page, limit, opts.sort, opts.order), {
+			status: opts.status,
+			search: opts.search,
+			from: opts.from,
+			to: opts.to,
+			vendorId: opts.vendorId,
+		});
 
-		await runList<Bill[]>(
+		await runList<BillListResponse>(
 			{
 				spinner: {
 					loading: 'Fetching bills...',
@@ -44,7 +58,23 @@ export const listBillsCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/bills', params),
 				onInteractive: (result) => {
-					console.log(renderBillsTable(result ?? []));
+					console.log(renderBillsTable(result.bills ?? []));
+					if (result.pagination) {
+						printPaginationHint(result.pagination);
+					}
+				},
+				csv: {
+					headers: ['Number', 'Vendor', 'Status', 'Total', 'Currency', 'Due Date', 'ID'],
+					toRow: (b: Bill) => [
+						b.billNumber ?? '',
+						b.vendorName ?? '',
+						b.status ?? '',
+						formatMoney(b.total, b.currency),
+						b.currency ?? '',
+						b.dueDate ?? '',
+						b.id,
+					],
+					getItems: (r) => (r as BillListResponse).bills ?? [],
 				},
 			},
 			globalOpts,

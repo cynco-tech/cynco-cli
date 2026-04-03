@@ -8,16 +8,9 @@ import { errorMessage, outputError, outputResult } from '../../lib/output';
 import { requireText } from '../../lib/prompts';
 import { createSpinner } from '../../lib/spinner';
 import { isInteractive } from '../../lib/tty';
+import type { ImportResult } from '../../types/bank';
 
 const SUPPORTED_FORMATS = ['.csv', '.ofx', '.qif', '.qfx'];
-
-interface ImportResult {
-	imported: number;
-	skipped: number;
-	duplicates: number;
-	dateRange?: { from: string; to: string };
-	errors?: Array<{ line: number; message: string }>;
-}
 
 export const importCmd = new Command('import')
 	.description('Import bank transactions from a file')

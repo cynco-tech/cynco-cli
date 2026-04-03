@@ -6,15 +6,7 @@ import { formatMoney } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
 import { outputError } from '../../lib/output';
 import { requireText } from '../../lib/prompts';
-
-interface PaymentResult {
-	id: string;
-	invoiceId: string;
-	amount: number;
-	currency?: string;
-	date?: string;
-	method?: string;
-}
+import type { PaymentResult } from '../../types/invoice';
 
 export const recordPaymentCmd = new Command('record-payment')
 	.description('Record a payment against an invoice')

@@ -5,16 +5,7 @@ import type { GlobalOpts } from '../../lib/client';
 import { formatMoney } from '../../lib/format';
 import { buildHelpText } from '../../lib/help-text';
 import { renderTable } from '../../lib/table';
-
-interface OverdueInvoice {
-	id: string;
-	invoiceNumber?: string;
-	customerName?: string;
-	total?: number;
-	currency?: string;
-	dueDate?: string;
-	status?: string;
-}
+import type { InvoiceListResponse } from '../../types/invoice';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -49,7 +40,7 @@ export const overdueCmd = new Command('overdue')
 	.action(async (opts, cmd) => {
 		const globalOpts = cmd.optsWithGlobals() as GlobalOpts;
 
-		await runList<OverdueInvoice[]>(
+		await runList<InvoiceListResponse>(
 			{
 				spinner: {
 					loading: 'Fetching overdue invoices...',
@@ -63,7 +54,7 @@ export const overdueCmd = new Command('overdue')
 						page: opts.page,
 					}),
 				onInteractive: (result) => {
-					const invoices = result ?? [];
+					const invoices = result.invoices ?? [];
 					if (invoices.length === 0) {
 						console.log(`\n  ${pc.green('No overdue invoices.')} \n`);
 						return;
@@ -78,21 +69,59 @@ export const overdueCmd = new Command('overdue')
 						'Aging',
 						'ID',
 					];
-					const rows = invoices.map((inv) => {
-						const days = daysOverdue(inv.dueDate);
-						return [
-							inv.invoiceNumber ?? '-',
-							inv.customerName ?? '-',
-							formatMoney(inv.total, inv.currency),
-							inv.dueDate ?? '-',
-							String(days),
-							agingBucket(days),
-							inv.id,
-						];
-					});
+
+					// Compute days once per invoice, reuse for table + buckets
+					const invoiceRows = invoices.map((inv) => ({
+						inv,
+						days: daysOverdue(inv.dueDate),
+					}));
+
+					const rows = invoiceRows.map(({ inv, days }) => [
+						inv.invoiceNumber ?? '-',
+						inv.customerName ?? '-',
+						formatMoney(inv.total, inv.currency),
+						inv.dueDate ?? '-',
+						String(days),
+						agingBucket(days),
+						inv.id,
+					]);
 
 					console.log(`\n  ${pc.bold(pc.red(`Overdue Invoices (${invoices.length})`))} \n`);
 					console.log(renderTable(headers, rows));
+
+					// Aging bucket summary
+					const buckets = {
+						'1-30': { count: 0, total: 0 },
+						'31-60': { count: 0, total: 0 },
+						'61-90': { count: 0, total: 0 },
+						'90+': { count: 0, total: 0 },
+					};
+					for (const { inv, days } of invoiceRows) {
+						const amount = inv.total ?? 0;
+						if (days <= 30) {
+							buckets['1-30'].count++;
+							buckets['1-30'].total += amount;
+						} else if (days <= 60) {
+							buckets['31-60'].count++;
+							buckets['31-60'].total += amount;
+						} else if (days <= 90) {
+							buckets['61-90'].count++;
+							buckets['61-90'].total += amount;
+						} else {
+							buckets['90+'].count++;
+							buckets['90+'].total += amount;
+						}
+					}
+
+					console.log(`  ${pc.dim('Aging Summary:')}`);
+					for (const [label, data] of Object.entries(buckets)) {
+						if (data.count > 0) {
+							console.log(
+								`    ${label} days: ${data.count} invoice${data.count === 1 ? '' : 's'}, ${pc.red(formatMoney(data.total))}`,
+							);
+						}
+					}
+					console.log('');
 
 					// Total overdue amount by currency
 					const totals = new Map<string, number>();

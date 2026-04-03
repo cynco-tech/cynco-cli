@@ -1,13 +1,7 @@
 import { renderTable } from '../../lib/table';
+import type { Vendor } from '../../types/vendor';
 
-export interface Vendor {
-	id: string;
-	name?: string;
-	email?: string;
-	phone?: string;
-	country?: string;
-	createdAt?: string;
-}
+export type { Vendor } from '../../types/vendor';
 
 export function renderVendorsTable(vendors: Vendor[]): string {
 	const headers = ['Name', 'Email', 'Phone', 'Country', 'ID'];
@@ -18,5 +12,8 @@ export function renderVendorsTable(vendors: Vendor[]): string {
 		v.country ?? '-',
 		v.id,
 	]);
-	return renderTable(headers, rows, 'No vendors found.');
+	return renderTable(headers, rows, {
+		message: 'No vendors found.',
+		suggestion: 'Add one with: cynco vendors create --name "Vendor Name"',
+	});
 }

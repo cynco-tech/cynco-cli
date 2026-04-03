@@ -4,6 +4,7 @@ import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
 import { outputError } from '../../lib/output';
 import { promptForMissing } from '../../lib/prompts';
+import { mergeStdinWithFlags, readStdinJson } from '../../lib/stdin';
 import type { JournalEntry, JournalEntryLine } from './utils';
 import { statusIndicator } from './utils';
 
@@ -21,10 +22,10 @@ function parseLines(raw: string, globalOpts: GlobalOpts): JournalEntryLine[] {
 		);
 	}
 
-	if (!Array.isArray(parsed)) {
+	if (!Array.isArray(parsed) || parsed.length === 0) {
 		outputError(
 			{
-				message: '--lines must be a JSON array of line objects',
+				message: '--lines must be a non-empty JSON array of line objects',
 				code: 'invalid_lines',
 			},
 			{ json: globalOpts.json },
@@ -76,6 +77,7 @@ export const createCmd = new Command('create')
 		'--lines <json>',
 		'JSON array of lines: [{"accountId":"...","debit":100},{"accountId":"...","credit":100}]',
 	)
+	.option('--stdin', 'Read JSON body from stdin')
 	.addHelpText(
 		'after',
 		buildHelpText({
@@ -83,50 +85,63 @@ export const createCmd = new Command('create')
 				'cynco journal-entries create --date 2026-03-15 --description "Office supplies" --lines \'[{"accountId":"coa_exp1","debit":500},{"accountId":"coa_cash","credit":500}]\'',
 				'cynco je create',
 				'cynco journal-entries create --json',
+				'echo \'{"date":"2026-03-15","description":"Office supplies","lines":[...]}\' | cynco journal-entries create --stdin',
 			],
 		}),
 	)
 	.action(async (opts) => {
 		const globalOpts = createCmd.optsWithGlobals() as GlobalOpts;
 
-		const fields = await promptForMissing(
-			{ date: opts.date, description: opts.description },
-			[
-				{
-					flag: 'date',
-					message: 'Entry date (YYYY-MM-DD)',
-					placeholder: '2026-03-15',
-					validate: (v) =>
-						v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? undefined : 'Date must be in YYYY-MM-DD format',
-				},
-				{
-					flag: 'description',
-					message: 'Description',
-					placeholder: 'Office supplies purchase',
-				},
-			],
-			globalOpts,
-		);
+		let body: Record<string, unknown>;
 
-		if (!opts.lines) {
-			outputError(
-				{
-					message: 'Missing --lines flag. Provide a JSON array of debit/credit lines.',
-					code: 'missing_lines',
-				},
-				{ json: globalOpts.json },
+		if (opts.stdin) {
+			const stdinBody = readStdinJson(globalOpts.json);
+			body = mergeStdinWithFlags(stdinBody, {
+				date: opts.date,
+				description: opts.description,
+				memo: opts.memo,
+				lines: opts.lines ? parseLines(opts.lines, globalOpts) : undefined,
+			});
+		} else {
+			const fields = await promptForMissing(
+				{ date: opts.date, description: opts.description },
+				[
+					{
+						flag: 'date',
+						message: 'Entry date (YYYY-MM-DD)',
+						placeholder: '2026-03-15',
+						validate: (v) =>
+							v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? undefined : 'Date must be in YYYY-MM-DD format',
+					},
+					{
+						flag: 'description',
+						message: 'Description',
+						placeholder: 'Office supplies purchase',
+					},
+				],
+				globalOpts,
 			);
-		}
 
-		const lines = parseLines(opts.lines, globalOpts);
+			if (!opts.lines) {
+				outputError(
+					{
+						message: 'Missing --lines flag. Provide a JSON array of debit/credit lines.',
+						code: 'missing_lines',
+					},
+					{ json: globalOpts.json },
+				);
+			}
 
-		const body: Record<string, unknown> = {
-			date: fields.date,
-			description: fields.description,
-			lines,
-		};
-		if (opts.memo) {
-			body.memo = opts.memo;
+			const lines = parseLines(opts.lines, globalOpts);
+
+			body = {
+				date: fields.date,
+				description: fields.description,
+				lines,
+			};
+			if (opts.memo) {
+				body.memo = opts.memo;
+			}
 		}
 
 		await runCreate<JournalEntry>(

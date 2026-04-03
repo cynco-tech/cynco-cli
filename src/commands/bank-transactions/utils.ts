@@ -1,17 +1,8 @@
 import { formatMoney, statusIndicator } from '../../lib/format';
 import { renderTable } from '../../lib/table';
+import type { BankTransaction } from '../../types/bank';
 
-export interface BankTransaction {
-	id: string;
-	date?: string;
-	description?: string;
-	amount?: number;
-	type?: string;
-	status?: string;
-	accountName?: string;
-	currency?: string;
-	createdAt?: string;
-}
+export type { BankTransaction } from '../../types/bank';
 
 export function renderTransactionsTable(transactions: BankTransaction[]): string {
 	const headers = ['Date', 'Description', 'Amount', 'Type', 'Status', 'Account', 'ID'];
@@ -24,5 +15,8 @@ export function renderTransactionsTable(transactions: BankTransaction[]): string
 		t.accountName ?? '-',
 		t.id,
 	]);
-	return renderTable(headers, rows, 'No transactions found.');
+	return renderTable(headers, rows, {
+		message: 'No transactions found.',
+		suggestion: 'Import transactions with: cynco bank-transactions import <file> --account-id <id>',
+	});
 }

@@ -1,14 +1,8 @@
 import pc from 'picocolors';
 import { renderTable } from '../../lib/table';
+import type { ApiKey } from '../../types/api-key';
 
-export interface ApiKey {
-	id: string;
-	name?: string;
-	keyPrefix?: string;
-	scopes?: string[];
-	lastUsedAt?: string;
-	createdAt?: string;
-}
+export type { ApiKey } from '../../types/api-key';
 
 export const VALID_SCOPES = [
 	'invoices:read',
@@ -53,5 +47,8 @@ export function renderApiKeysTable(keys: ApiKey[]): string {
 		k.lastUsedAt ?? pc.dim('never'),
 		k.id,
 	]);
-	return renderTable(headers, rows, 'No API keys found.');
+	return renderTable(headers, rows, {
+		message: 'No API keys found.',
+		suggestion: 'Create one with: cynco api-keys create --name "My Key"',
+	});
 }

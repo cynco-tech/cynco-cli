@@ -9,6 +9,7 @@ import { errorMessage, outputError, outputResult } from '../lib/output';
 import { createSpinner } from '../lib/spinner';
 import { renderTable } from '../lib/table';
 import { isInteractive } from '../lib/tty';
+import type { ExtractionResult } from '../types/extraction';
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.tiff', '.bmp'];
 const DOCUMENT_TYPES = [
@@ -20,32 +21,6 @@ const DOCUMENT_TYPES = [
 	'purchase_order',
 ] as const;
 type DocumentType = (typeof DOCUMENT_TYPES)[number];
-
-interface ExtractionResult {
-	id: string;
-	status: string;
-	documentType?: string;
-	fileName?: string;
-	confidence?: number;
-	data?: {
-		vendorName?: string;
-		customerName?: string;
-		invoiceNumber?: string;
-		date?: string;
-		dueDate?: string;
-		currency?: string;
-		subtotal?: number;
-		tax?: number;
-		total?: number;
-		lineItems?: Array<{
-			description?: string;
-			quantity?: number;
-			unitPrice?: number;
-			amount?: number;
-		}>;
-		[key: string]: unknown;
-	};
-}
 
 function renderExtractionResult(result: ExtractionResult): void {
 	const d = result.data;

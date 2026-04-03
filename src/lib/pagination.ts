@@ -60,14 +60,29 @@ export function buildPaginationParams(
 	return params;
 }
 
+/**
+ * Merge filter options into a params object, skipping undefined/empty values.
+ */
+export function buildFilterParams(
+	base: Record<string, string>,
+	filters: Record<string, string | undefined>,
+): Record<string, string> {
+	for (const [key, value] of Object.entries(filters)) {
+		if (value !== undefined && value !== '') {
+			base[key] = value;
+		}
+	}
+	return base;
+}
+
 export function printPaginationHint(pagination: {
 	hasMore: boolean;
 	page: number;
 	totalPages: number;
 }): void {
 	if (pagination.hasMore) {
-		console.log(
-			`\nPage ${pagination.page} of ${pagination.totalPages}. Use --page ${pagination.page + 1} for next page.`,
+		process.stderr.write(
+			`\nPage ${pagination.page} of ${pagination.totalPages}. Use --page ${pagination.page + 1} for next page.\n`,
 		);
 	}
 }

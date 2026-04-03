@@ -1,13 +1,8 @@
 import pc from 'picocolors';
 import { renderTable } from '../../lib/table';
+import type { Webhook } from '../../types/webhook';
 
-export interface Webhook {
-	id: string;
-	url?: string;
-	events?: string[];
-	active?: boolean;
-	createdAt?: string;
-}
+export type { Webhook } from '../../types/webhook';
 
 export function renderWebhooksTable(webhooks: Webhook[]): string {
 	const headers = ['URL', 'Events', 'Active', 'ID'];
@@ -17,5 +12,8 @@ export function renderWebhooksTable(webhooks: Webhook[]): string {
 		wh.active == null ? '-' : wh.active ? pc.green('yes') : pc.dim('no'),
 		wh.id,
 	]);
-	return renderTable(headers, rows, 'No webhooks found.');
+	return renderTable(headers, rows, {
+		message: 'No webhooks found.',
+		suggestion: 'Create one with: cynco webhooks create --url https://example.com/hook',
+	});
 }

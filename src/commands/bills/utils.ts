@@ -1,16 +1,8 @@
 import { formatMoney, statusIndicator } from '../../lib/format';
 import { renderTable } from '../../lib/table';
+import type { Bill } from '../../types/bill';
 
-export interface Bill {
-	id: string;
-	billNumber?: string;
-	vendorName?: string;
-	status?: string;
-	total?: number;
-	currency?: string;
-	dueDate?: string;
-	createdAt?: string;
-}
+export type { Bill } from '../../types/bill';
 
 export function renderBillsTable(bills: Bill[]): string {
 	const headers = ['Number', 'Vendor', 'Status', 'Total', 'Currency', 'Due Date', 'ID'];
@@ -23,5 +15,8 @@ export function renderBillsTable(bills: Bill[]): string {
 		bill.dueDate ?? '-',
 		bill.id,
 	]);
-	return renderTable(headers, rows, 'No bills found.');
+	return renderTable(headers, rows, {
+		message: 'No bills found.',
+		suggestion: 'Create one with: cynco bills create --vendor-id <id>',
+	});
 }

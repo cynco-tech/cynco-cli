@@ -8,4 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate PR title
-        run: node .github/scripts/pr-title-check.js "${{ github.event.pull_request.title }}"
+        run: node .github/scripts/pr-title-check.js "$PR_TITLE"
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}

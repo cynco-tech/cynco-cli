@@ -2,8 +2,13 @@ import { Command } from '@commander-js/extra-typings';
 import { runList } from '../../lib/actions';
 import type { GlobalOpts } from '../../lib/client';
 import { buildHelpText } from '../../lib/help-text';
-import { buildPaginationParams, parseLimitOpt, parsePageOpt } from '../../lib/pagination';
-import type { Webhook } from './utils';
+import {
+	buildPaginationParams,
+	parseLimitOpt,
+	parsePageOpt,
+	printPaginationHint,
+} from '../../lib/pagination';
+import type { Webhook, WebhookListResponse } from '../../types/webhook';
 import { renderWebhooksTable } from './utils';
 
 export const listWebhooksCmd = new Command('list')
@@ -23,7 +28,7 @@ export const listWebhooksCmd = new Command('list')
 		const page = parsePageOpt(opts.page, globalOpts);
 		const params = buildPaginationParams(page, limit);
 
-		await runList<Webhook[]>(
+		await runList<WebhookListResponse>(
 			{
 				spinner: {
 					loading: 'Fetching webhooks...',
@@ -32,7 +37,20 @@ export const listWebhooksCmd = new Command('list')
 				},
 				apiCall: (client) => client.get('/webhooks', params),
 				onInteractive: (result) => {
-					console.log(renderWebhooksTable(result ?? []));
+					console.log(renderWebhooksTable(result.webhooks ?? []));
+					if (result.pagination) {
+						printPaginationHint(result.pagination);
+					}
+				},
+				csv: {
+					headers: ['URL', 'Events', 'Active', 'ID'],
+					toRow: (wh: Webhook) => [
+						wh.url ?? '',
+						wh.events?.join('; ') ?? '',
+						wh.active == null ? '' : wh.active ? 'yes' : 'no',
+						wh.id,
+					],
+					getItems: (r) => (r as WebhookListResponse).webhooks ?? [],
 				},
 			},
 			globalOpts,

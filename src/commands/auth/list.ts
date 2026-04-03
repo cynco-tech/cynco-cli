@@ -24,18 +24,20 @@ export const list = new Command('list')
 
 		if (!globalOpts.json && isInteractive()) {
 			if (profiles.length === 0) {
-				console.log('No profiles found. Run: cynco login');
+				process.stderr.write(`\n  ${pc.dim('No profiles found.')}\n`);
+				process.stderr.write(`  ${pc.dim('Run')} cynco login ${pc.dim('to get started.')}\n\n`);
 				return;
 			}
 
-			const headers = ['Profile', 'API Key', 'Active'];
+			const headers = ['Profile', 'API Key', ''];
 			const rows = profiles.map((profile) => {
 				const key = creds?.profiles[profile.name]?.api_key ?? '';
-				const active = profile.active ? pc.green('*') : '';
-				return [profile.name, maskKey(key), active];
+				const active = profile.active ? pc.green('\u25cf active') : '';
+				return [profile.name, pc.dim(maskKey(key)), active];
 			});
 
-			console.log(renderTable(headers, rows));
+			process.stderr.write('\n');
+			process.stderr.write(`${renderTable(headers, rows)}\n\n`);
 		} else {
 			outputResult(
 				profiles.map((profile) => ({

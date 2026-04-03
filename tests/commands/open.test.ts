@@ -67,15 +67,14 @@ describe('open command', () => {
 		expect(openBrowser).toHaveBeenCalledWith('https://app.cynco.io/customers');
 	});
 
-	test('handles unknown page with error', async () => {
-		const spies = setupOutputSpies();
+	test('handles unknown page as custom path', async () => {
+		const _spies = setupOutputSpies();
+		const { openBrowser } = await import('../../src/lib/browser');
 
 		const { open } = await import('../../src/commands/open');
 		await open.parseAsync(['nonexistent'], { from: 'user' });
 
-		const output = spies.log.mock.calls.map((c) => c[0]).join('\n');
-		expect(output).toContain('nonexistent');
-		expect(process.exitCode).toBe(1);
+		expect(openBrowser).toHaveBeenCalledWith('https://app.cynco.io/nonexistent');
 	});
 
 	test('JSON output has url and opened fields', async () => {
@@ -91,18 +90,13 @@ describe('open command', () => {
 		expect(parsed.url).toBe('https://app.cynco.io/');
 	});
 
-	test('JSON output for unknown page includes available pages', async () => {
-		const spies = setupOutputSpies();
+	test('accepts custom path with leading slash', async () => {
+		const _spies = setupOutputSpies();
+		const { openBrowser } = await import('../../src/lib/browser');
 
 		const { open } = await import('../../src/commands/open');
-		await open.parseAsync(['badpage'], { from: 'user' });
+		await open.parseAsync(['/dashboard/banking/fac_abc123'], { from: 'user' });
 
-		const output = spies.log.mock.calls.map((c) => c[0]).join('\n');
-		const parsed = JSON.parse(output);
-		expect(parsed).toHaveProperty('error');
-		expect(parsed).toHaveProperty('available');
-		expect(Array.isArray(parsed.available)).toBe(true);
-		expect(parsed.available).toContain('invoices');
-		expect(parsed.available).toContain('settings');
+		expect(openBrowser).toHaveBeenCalledWith('https://app.cynco.io/dashboard/banking/fac_abc123');
 	});
 });

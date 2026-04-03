@@ -42,6 +42,7 @@ export const voidCmd = new Command('void')
 				apiCall: (client) => client.post(`/invoices/${id}/void`, body),
 				errorCode: 'void_error',
 				successMsg: `Invoice ${id} voided.`,
+				dryRunAction: `void invoice ${id}`,
 			},
 			globalOpts,
 		);

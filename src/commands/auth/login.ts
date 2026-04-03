@@ -8,7 +8,9 @@ import { buildHelpText } from '../../lib/help-text';
 import { outputError, outputResult } from '../../lib/output';
 import { cancelAndExit } from '../../lib/prompts';
 import { createSpinner } from '../../lib/spinner';
+import { readStdinJson } from '../../lib/stdin';
 import { isInteractive } from '../../lib/tty';
+import { VERSION } from '../../lib/version';
 
 const API_KEYS_URL = 'https://app.cynco.io/settings/api-keys';
 const KEY_PREFIX = 'cak_';
@@ -22,7 +24,7 @@ function getBaseUrl(): string {
 async function browserAuthFlow(globalOpts: GlobalOpts): Promise<string | null> {
 	const baseUrl = getBaseUrl();
 
-	const startSpinner = createSpinner('Starting browser authentication...', globalOpts.quiet);
+	const startSpinner = createSpinner('Creating secure session...', globalOpts.quiet);
 
 	let sessionId: string;
 	let deviceCode: string;
@@ -31,7 +33,10 @@ async function browserAuthFlow(globalOpts: GlobalOpts): Promise<string | null> {
 	try {
 		const res = await fetch(`${baseUrl}/api/cli/auth/start`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: {
+				'Content-Type': 'application/json',
+				'User-Agent': `cynco-cli/${VERSION}`,
+			},
 			signal: AbortSignal.timeout(10000),
 		});
 		const data = (await res.json()) as {
@@ -41,30 +46,34 @@ async function browserAuthFlow(globalOpts: GlobalOpts): Promise<string | null> {
 		};
 
 		if (!data.success || !data.data) {
-			startSpinner.fail('Failed to start browser auth');
-			p.log.error(data.error?.message || 'Could not create auth session');
+			startSpinner.fail('Failed to start authentication');
+			process.stderr.write(
+				`\n  ${pc.red(data.error?.message || 'Could not create auth session')}\n\n`,
+			);
 			return null;
 		}
 
 		sessionId = data.data.sessionId;
 		deviceCode = data.data.deviceCode;
 		verificationUri = data.data.verificationUri;
-		startSpinner.stop('Auth session created');
+		startSpinner.stop('Session created');
 	} catch {
-		startSpinner.fail('Could not reach Cynco server');
-		p.log.error(`Make sure ${baseUrl} is reachable.`);
+		startSpinner.fail('Could not reach Cynco');
+		process.stderr.write(`\n  ${pc.dim('Make sure')} ${baseUrl} ${pc.dim('is reachable.')}\n\n`);
 		return null;
 	}
 
-	p.log.info(`Your verification code: ${pc.bold(pc.cyan(deviceCode))}`);
-	p.log.info('Verify this code matches what you see in the browser.');
-	p.log.info('');
+	// Show device code prominently
+	process.stderr.write('\n');
+	process.stderr.write(`  ${pc.dim('Your verification code:')}\n`);
+	process.stderr.write(`\n  ${pc.bold(pc.cyan(`  ${deviceCode}  `))}\n\n`);
+	process.stderr.write(`  ${pc.dim('Confirm this code matches your browser to continue.')}\n\n`);
 
 	const browserUrl = `${verificationUri}?code=${deviceCode}`;
 	const opened = await openBrowser(browserUrl);
 	if (!opened) {
-		p.log.warn(`Could not open browser automatically. Please visit this URL:`);
-		p.log.info(pc.cyan(pc.underline(browserUrl)));
+		process.stderr.write(`  ${pc.dim('Open this URL in your browser:')}\n`);
+		process.stderr.write(`  ${pc.cyan(browserUrl)}\n\n`);
 	}
 
 	const pollSpinner = createSpinner('Waiting for browser authorization...', globalOpts.quiet);
@@ -83,7 +92,7 @@ async function browserAuthFlow(globalOpts: GlobalOpts): Promise<string | null> {
 			};
 
 			if (data.success && data.data?.status === 'approved' && data.data.apiKey) {
-				pollSpinner.stop('Authorization received!');
+				pollSpinner.stop('Authorized');
 				return data.data.apiKey;
 			}
 
@@ -91,25 +100,26 @@ async function browserAuthFlow(globalOpts: GlobalOpts): Promise<string | null> {
 				continue;
 			}
 
-			// Error states
 			if (!data.success) {
 				const code = data.error?.code;
 				if (code === 'SESSION_EXPIRED') {
 					pollSpinner.fail('Session expired');
-					p.log.error('The auth session expired. Run `cynco login` again.');
+					process.stderr.write(`\n  ${pc.dim('Run')} cynco login ${pc.dim('to try again.')}\n\n`);
 					return null;
 				}
 				if (code === 'SESSION_CONSUMED') {
 					pollSpinner.fail('Session already used');
-					p.log.error('This session was already consumed. Run `cynco login` again.');
+					process.stderr.write(
+						`\n  ${pc.dim('Run')} cynco login ${pc.dim('to start a new session.')}\n\n`,
+					);
 					return null;
 				}
 			}
 		} catch {}
 	}
 
-	pollSpinner.fail('Timed out');
-	p.log.error('Browser authorization timed out after 5 minutes. Run `cynco login` again.');
+	pollSpinner.fail('Timed out after 5 minutes');
+	process.stderr.write(`\n  ${pc.dim('Run')} cynco login ${pc.dim('to try again.')}\n\n`);
 	return null;
 }
 
@@ -129,9 +139,29 @@ async function validateApiKey(apiKey: string): Promise<{ valid: boolean; error?:
 	}
 }
 
+function showPostLoginHelp(): void {
+	process.stderr.write('\n');
+	process.stderr.write(`  ${pc.dim('What\u2019s next?')}\n`);
+	process.stderr.write('\n');
+	process.stderr.write(
+		`  ${pc.dim('$')} cynco status            ${pc.dim('Business health overview')}\n`,
+	);
+	process.stderr.write(
+		`  ${pc.dim('$')} cynco invoices list      ${pc.dim('View your invoices')}\n`,
+	);
+	process.stderr.write(
+		`  ${pc.dim('$')} cynco extract file.pdf   ${pc.dim('AI document extraction')}\n`,
+	);
+	process.stderr.write(
+		`  ${pc.dim('$')} cynco doctor             ${pc.dim('Verify connectivity')}\n`,
+	);
+	process.stderr.write('\n');
+}
+
 export const login = new Command('login')
 	.description('Log in to your Cynco account')
 	.option('-k, --key <key>', 'API key (skips interactive prompt)')
+	.option('--token-stdin', 'Read API key from stdin (for CI/automation)')
 	.option('--profile <name>', 'Profile name to store the key under', 'default')
 	.addHelpText(
 		'after',
@@ -141,6 +171,7 @@ export const login = new Command('login')
 				'cynco login',
 				'cynco login --key cak_1234567890',
 				'cynco login --key cak_1234567890 --profile production',
+				'echo $CYNCO_KEY | cynco login --token-stdin',
 			],
 		}),
 	)
@@ -149,26 +180,43 @@ export const login = new Command('login')
 		let apiKey = opts.key;
 		let usedBrowserAuth = false;
 
+		// Token from stdin (CI/automation)
+		if (opts.tokenStdin) {
+			const stdinBody = readStdinJson(globalOpts.json);
+			apiKey = (stdinBody.token ?? stdinBody.apiKey ?? stdinBody.key) as string | undefined;
+			if (!apiKey || typeof apiKey !== 'string') {
+				// Try reading raw text from stdin instead
+				outputError(
+					{
+						message:
+							'No token found on stdin. Expected JSON with "token", "apiKey", or "key" field.',
+						code: 'stdin_error',
+					},
+					{ json: globalOpts.json },
+				);
+			}
+		}
+
 		if (!apiKey) {
 			if (!isInteractive() || globalOpts.json) {
 				outputError(
 					{
-						message:
-							'No API key provided. Use --key in non-interactive mode, or when using --json.',
+						message: 'No API key provided. Use --key or --token-stdin in non-interactive mode.',
 						code: 'missing_key',
 					},
 					{ json: globalOpts.json },
 				);
 			}
 
-			p.intro(pc.bold('Cynco Authentication'));
+			process.stderr.write('\n');
+			p.intro(pc.bold('Cynco'));
 
-			// Check for existing credentials and inform the user
+			// Check for existing credentials
 			const creds = readCredentials();
 			if (creds && Object.keys(creds.profiles).length > 0) {
 				const profileCount = Object.keys(creds.profiles).length;
 				p.log.info(
-					`Found ${profileCount} existing profile(s). Active: ${pc.bold(creds.active_profile)}`,
+					`${profileCount} profile${profileCount > 1 ? 's' : ''} found \u00b7 active: ${pc.bold(creds.active_profile)}`,
 				);
 			}
 
@@ -178,15 +226,16 @@ export const login = new Command('login')
 					{
 						value: 'browser-auth' as const,
 						label: 'Log in via browser',
-						hint: 'recommended — one click',
+						hint: 'recommended \u2014 one click',
 					},
 					{
 						value: 'browser-keys' as const,
-						label: 'Open API keys page in browser',
+						label: 'Create API key in browser',
+						hint: 'for manual key management',
 					},
 					{
 						value: 'manual' as const,
-						label: 'Enter API key manually',
+						label: 'Paste an existing API key',
 					},
 				],
 			});
@@ -204,10 +253,10 @@ export const login = new Command('login')
 				usedBrowserAuth = true;
 			} else {
 				if (method === 'browser-keys') {
-					p.log.info(`Opening ${pc.cyan(pc.underline(API_KEYS_URL))} in your browser...`);
+					process.stderr.write(`\n  ${pc.dim('Opening')} ${pc.cyan(API_KEYS_URL)}\n\n`);
 					const keysOpened = await openBrowser(API_KEYS_URL);
 					if (!keysOpened) {
-						p.log.warn(`Could not open browser. Visit: ${pc.cyan(pc.underline(API_KEYS_URL))}`);
+						process.stderr.write(`  ${pc.dim('Could not open browser. Visit the URL above.')}\n\n`);
 					}
 				}
 
@@ -218,7 +267,7 @@ export const login = new Command('login')
 							return 'API key is required';
 						}
 						if (!value.startsWith(KEY_PREFIX)) {
-							return `API key must start with "${KEY_PREFIX}"`;
+							return `Key must start with "${KEY_PREFIX}"`;
 						}
 						return undefined;
 					},
@@ -235,37 +284,33 @@ export const login = new Command('login')
 		if (!apiKey.startsWith(KEY_PREFIX)) {
 			outputError(
 				{
-					message: `Invalid API key format. Keys must start with "${KEY_PREFIX}".`,
+					message: `Invalid key format. Keys start with "${KEY_PREFIX}".`,
 					code: 'invalid_key_format',
 				},
 				{ json: globalOpts.json },
 			);
 		}
 
-		// Skip validation for browser auth — the server already created and validated the key
+		// Validate key (skip for browser auth — server already validated)
 		if (!usedBrowserAuth) {
-			const spinner = createSpinner('Validating API key...', globalOpts.quiet);
+			const spinner = createSpinner('Validating...', globalOpts.quiet);
 
 			const { valid, error } = await validateApiKey(apiKey);
 			if (!valid) {
 				spinner.fail('Invalid API key');
 				outputError(
-					{
-						message: error || 'API key validation failed.',
-						code: 'invalid_key',
-					},
+					{ message: error || 'API key validation failed.', code: 'invalid_key' },
 					{ json: globalOpts.json },
 				);
 			}
 
-			spinner.stop('API key is valid');
+			spinner.stop('Key verified');
 		}
 
-		// Determine profile name
+		// Profile selection
 		let profileName = opts.profile || 'default';
 
-		// In interactive mode, let the user choose where to store the key
-		if (isInteractive() && !globalOpts.json && !opts.key) {
+		if (isInteractive() && !globalOpts.json && !opts.key && !opts.tokenStdin) {
 			const profiles = listProfiles();
 
 			if (profiles.length > 0) {
@@ -273,7 +318,7 @@ export const login = new Command('login')
 					(profile) => ({
 						value: profile.name,
 						label: profile.name,
-						hint: profile.active ? 'active - will overwrite' : 'will overwrite',
+						hint: profile.active ? 'active \u2014 will overwrite' : 'will overwrite',
 					}),
 				);
 
@@ -283,7 +328,7 @@ export const login = new Command('login')
 				});
 
 				const selected = await p.select({
-					message: 'Store API key in which profile?',
+					message: 'Save to which profile?',
 					options,
 				});
 
@@ -293,18 +338,17 @@ export const login = new Command('login')
 
 				if (selected === '__new__') {
 					const newName = await p.text({
-						message: 'New profile name:',
+						message: 'Profile name:',
 						placeholder: 'production',
 						validate: (value) => {
 							if (!value || value.length === 0) {
-								return 'Profile name is required';
+								return 'Name required';
 							}
-							const existing = profiles.find((prof) => prof.name === value);
-							if (existing) {
-								return `Profile "${value}" already exists`;
+							if (profiles.find((prof) => prof.name === value)) {
+								return `"${value}" already exists`;
 							}
 							if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
-								return 'Profile name must contain only letters, numbers, dashes, and underscores';
+								return 'Letters, numbers, dashes, underscores only';
 							}
 							return undefined;
 						},
@@ -327,7 +371,7 @@ export const login = new Command('login')
 		} catch (err) {
 			outputError(
 				{
-					message: `Failed to save credentials: ${err instanceof Error ? err.message : 'unknown error'}`,
+					message: `Failed to save: ${err instanceof Error ? err.message : 'unknown error'}`,
 					code: 'config_write_error',
 				},
 				{ json: globalOpts.json },
@@ -335,10 +379,10 @@ export const login = new Command('login')
 		}
 
 		if (!globalOpts.json && isInteractive()) {
-			p.log.success(
-				`Logged in as profile ${pc.bold(profileName)}. Credentials saved to ${pc.dim(configPath)}`,
-			);
-			p.outro(pc.green('Ready to use Cynco CLI.'));
+			process.stderr.write('\n');
+			process.stderr.write(`  ${pc.green('\u2714')} Authenticated as ${pc.bold(profileName)}\n`);
+			process.stderr.write(`  ${pc.dim(`Credentials saved to ${configPath}`)}\n`);
+			showPostLoginHelp();
 		} else {
 			outputResult(
 				{

@@ -141,6 +141,64 @@ export async function requireSelect<V extends string>(
 	return result;
 }
 
+export interface LineItemInput {
+	description: string;
+	quantity: number;
+	unitPrice: number;
+}
+
+export async function promptForLineItems(_globalOpts: GlobalOpts): Promise<LineItemInput[]> {
+	if (!isInteractive()) {
+		return [];
+	}
+
+	const items: LineItemInput[] = [];
+	let addMore = true;
+
+	while (addMore) {
+		const description = await p.text({
+			message: `Item ${items.length + 1} — Description`,
+			placeholder: 'e.g. Consulting services',
+			validate: (v) => (!v || v.length === 0 ? 'Description is required' : undefined),
+		});
+		if (p.isCancel(description)) cancelAndExit('Cancelled.');
+
+		const qtyStr = await p.text({
+			message: 'Quantity',
+			placeholder: '1',
+			validate: (v) => {
+				const n = Number(v);
+				if (!v || Number.isNaN(n) || n <= 0) return 'Must be a positive number';
+				return undefined;
+			},
+		});
+		if (p.isCancel(qtyStr)) cancelAndExit('Cancelled.');
+
+		const priceStr = await p.text({
+			message: 'Unit price',
+			placeholder: '100.00',
+			validate: (v) => {
+				const n = Number(v);
+				if (!v || Number.isNaN(n) || n < 0) return 'Must be zero or a positive number';
+				return undefined;
+			},
+		});
+		if (p.isCancel(priceStr)) cancelAndExit('Cancelled.');
+
+		items.push({
+			description,
+			quantity: Number(qtyStr),
+			unitPrice: Number(priceStr),
+		});
+
+		const more = await p.confirm({ message: 'Add another item?' });
+		if (p.isCancel(more)) cancelAndExit('Cancelled.');
+		addMore = more;
+	}
+
+	return items;
+}
+
 export async function promptForMissing<T extends Record<string, string | undefined>>(
 	current: T,
 	fields: FieldSpec[],
